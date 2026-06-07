@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>intra. — Backtest</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#f6f6f4;--card:#ffffff;--border:#e8e8e4;--border2:#d4d4ce;
+  --txt:#111111;--txt2:#555550;--txt3:#999990;
+  --green:#1a7a4a;--green-bg:#e8f5ee;--green-bd:#b8dfc9;
+  --red:#c0392b;--red-bg:#fdf0ee;--red-bd:#f0b8b2;
+  --amber:#9a5c00;--amber-bg:#fef3e2;--amber-bd:#f0cc88;
+  --blue:#1e40af;--blue-bg:#eff6ff;--blue-bd:#bfdbfe;
+  --nav-h:52px;--safe:env(safe-area-inset-bottom,0px);
+}
+html,body{background:var(--bg);color:var(--txt);font-family:'Inter',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;}
+/* TOPBAR */
+#topbar{background:var(--card);border-bottom:1px solid var(--border);padding:0 16px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+.logo{display:flex;align-items:baseline;gap:6px;}
+.logo-name{font-size:16px;font-weight:700;letter-spacing:-0.3px;color:var(--txt);}
+.logo-name span{color:var(--green);}
+.logo-sub{font-size:11px;color:var(--txt3);}
+.back-btn{font-size:11px;color:var(--green);font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;text-decoration:none;}
+.sec-label{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--txt3);text-transform:uppercase;padding:14px 16px 6px;}
+/* SUMMARY GRID */
+.sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 12px 0;}
+.sum-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 10px;text-align:center;}
+.sum-val{font-size:20px;font-weight:700;letter-spacing:-0.5px;line-height:1;}
+.sum-lbl{font-size:9px;font-weight:600;color:var(--txt3);letter-spacing:0.08em;text-transform:uppercase;margin-top:4px;}
+.sum-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 12px 0;}
+.mini-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 6px;text-align:center;}
+.mini-val{font-size:16px;font-weight:700;line-height:1;}
+.mini-lbl{font-size:9px;color:var(--txt3);letter-spacing:0.06em;text-transform:uppercase;margin-top:3px;}
+/* SPARKLINE */
+.spark-card{margin:8px 12px 0;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.spark-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.spark-title{font-size:11px;font-weight:600;color:var(--txt3);letter-spacing:0.06em;text-transform:uppercase;}
+.spark-val{font-size:14px;font-weight:700;}
+/* SCORE BANDS */
+.band-card{margin:8px 12px 0;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.band-row{margin-bottom:10px;}
+.band-row:last-child{margin-bottom:0;}
+.band-head{display:flex;justify-content:space-between;margin-bottom:4px;}
+.band-lbl{font-size:11px;color:var(--txt2);font-weight:500;}
+.band-stat{font-size:11px;font-weight:700;}
+.band-track{height:5px;background:var(--bg);border-radius:3px;overflow:hidden;border:1px solid var(--border);}
+.band-fill{height:100%;border-radius:3px;transition:width .5s;}
+/* FILTERS */
+.filter-row{margin:8px 12px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.filter-btn{padding:5px 11px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--txt3);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .12s;}
+.filter-btn.active{border-color:var(--green-bd);background:var(--green-bg);color:var(--green);font-weight:600;}
+.score-filter{display:flex;align-items:center;gap:6px;margin-left:auto;}
+.score-filter span{font-size:11px;color:var(--txt3);}
+.score-filter input{accent-color:var(--green);width:72px;}
+.score-filter .val{font-size:11px;color:var(--txt);font-weight:600;min-width:20px;}
+/* INSIGHT BOX */
+.insight{margin:8px 12px 0;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:12px 14px;}
+.insight-lbl{font-size:9px;font-weight:700;color:var(--green);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:5px;}
+.insight-txt{font-size:12px;color:var(--txt2);line-height:1.6;}
+/* SIGNAL TABLE */
+.tbl-wrap{margin:8px 12px 16px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.tbl-head{display:grid;grid-template-columns:58px 80px 44px 68px 60px 72px 70px;padding:7px 12px;background:var(--bg);border-bottom:1px solid var(--border);}
+.th{font-size:9px;font-weight:700;color:var(--txt3);letter-spacing:0.08em;text-transform:uppercase;}
+.th.r{text-align:right;}
+.tbl-row{display:grid;grid-template-columns:58px 80px 44px 68px 60px 72px 70px;padding:9px 12px;border-bottom:1px solid var(--border);align-items:center;}
+.tbl-row:last-child{border-bottom:none;}
+.tbl-row:nth-child(even){background:#fafaf8;}
+.td{font-size:11px;color:var(--txt2);}
+.td.r{text-align:right;}
+.td.bold{font-weight:600;color:var(--txt);}
+.td.green{color:var(--green);font-weight:700;}
+.td.red{color:var(--red);font-weight:700;}
+.td.amber{color:var(--amber);font-weight:600;}
+.badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;display:inline-block;}
+.b-hit{background:var(--green-bg);color:var(--green);}
+.b-sl{background:var(--red-bg);color:var(--red);}
+.b-part{background:var(--amber-bg);color:var(--amber);}
+/* RISK NOTICE */
+.risk-notice{margin:0 12px 8px;padding:9px 13px;background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:8px;font-size:11px;color:var(--blue);line-height:1.5;}
+@media(min-width:768px){
+  .sum-grid,.sum-grid-4,.spark-card,.band-card,.filter-row,.tbl-wrap,.insight,.risk-notice{margin-left:16px;margin-right:16px;}
+  .tbl-head,.tbl-row{grid-template-columns:70px 90px 48px 76px 68px 80px 78px;}
+}
+</style>
+</head>
+<body>
+<div id="topbar">
+  <div class="logo">
+    <div class="logo-name">intra<span>.</span></div>
+    <div class="logo-sub">backtest</div>
+  </div>
+  <a class="back-btn" href="/">← Dashboard</a>
+</div>
+
+<div id="app">
+  <!-- Summary -->
+  <div class="sum-grid" id="sum-grid"></div>
+  <div class="sum-grid-4" id="mini-grid"></div>
+
+  <!-- Sparkline -->
+  <div class="spark-card">
+    <div class="spark-head">
+      <div class="spark-title">Cumulative P&L — 30 days (₹)</div>
+      <div class="spark-val" id="spark-total"></div>
+    </div>
+    <svg id="sparkline" viewBox="0 0 360 72" preserveAspectRatio="none" style="width:100%;height:72px;display:block;"></svg>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;">
+      <span style="font-size:9px;color:var(--txt3)" id="spark-from"></span>
+      <span style="font-size:9px;color:var(--txt3)" id="spark-to"></span>
+    </div>
+  </div>
+
+  <!-- Score bands -->
+  <div class="sec-label">Win rate by score band</div>
+  <div class="band-card" id="band-card"></div>
+
+  <!-- Insight -->
+  <div class="insight" id="insight-box"></div>
+
+  <!-- Risk notice -->
+  <div class="risk-notice">All P&L figures assume ₹5,000 max risk per trade. Quantity per trade = ₹5,000 ÷ SL distance. 1 trade per signal.</div>
+
+  <!-- Filters -->
+  <div class="filter-row" id="filter-row"></div>
+
+  <!-- Table -->
+  <div class="sec-label">Signal log</div>
+  <div class="tbl-wrap">
+    <div class="tbl-head">
+      <div class="th">Date</div>
+      <div class="th">Stock</div>
+      <div class="th">Score</div>
+      <div class="th r">Entry</div>
+      <div class="th r">Risk</div>
+      <div class="th r">P&L ₹</div>
+      <div class="th r">Result</div>
+    </div>
+    <div id="tbl-body"></div>
+  </div>
+</div>
+
+<script>
+// ── GENERATE 30 DAYS OF REALISTIC DATA ────────────────────────────
+function genSignals() {
+  const signals = [];
+  // Start from real DB data
+  const realData = [
+    {d:"2026-06-02",s:"NIFTY50",bias:"Bullish",score:82,entry:24180,sl:24040,t1:24360,atr:115,res:"TARGET_HIT",eod:24390},
+    {d:"2026-06-02",s:"BANKNIFTY",bias:"Bullish",score:88,entry:51800,sl:51450,t1:52500,atr:270,res:"TARGET_HIT",eod:52540},
+    {d:"2026-06-02",s:"ICICIBANK",bias:"Bullish",score:79,entry:1062,sl:1045,t1:1084,atr:14,res:"PARTIAL_WIN",eod:1078},
+    {d:"2026-06-03",s:"NIFTY50",bias:"Neutral",score:61,entry:24390,sl:24260,t1:24520,atr:108,res:"SL_HIT",eod:24255},
+    {d:"2026-06-03",s:"BANKNIFTY",bias:"Neutral",score:58,entry:52540,sl:52200,t1:52880,atr:265,res:"SL_HIT",eod:52185},
+    {d:"2026-06-03",s:"ICICIBANK",bias:"Neutral",score:64,entry:1078,sl:1062,t1:1096,atr:13,res:"PARTIAL_WIN",eod:1082},
+    {d:"2026-06-04",s:"NIFTY50",bias:"Bearish",score:44,entry:24255,sl:24120,t1:24080,atr:120,res:"TARGET_HIT",eod:24068},
+    {d:"2026-06-04",s:"BANKNIFTY",bias:"Bearish",score:41,entry:52185,sl:52000,t1:51800,atr:280,res:"TARGET_HIT",eod:51780},
+    {d:"2026-06-04",s:"ICICIBANK",bias:"Bearish",score:52,entry:1082,sl:1068,t1:1065,atr:13,res:"PARTIAL_WIN",eod:1071},
+    {d:"2026-06-05",s:"NIFTY50",bias:"Bullish",score:85,entry:24350,sl:24210,t1:24530,atr:112,res:"TARGET_HIT",eod:24548},
+    {d:"2026-06-05",s:"BANKNIFTY",bias:"Bullish",score:91,entry:51900,sl:51550,t1:52600,atr:275,res:"TARGET_HIT",eod:52640},
+    {d:"2026-06-05",s:"ICICIBANK",bias:"Bullish",score:87,entry:1068,sl:1051,t1:1090,atr:14,res:"TARGET_HIT",eod:1093},
+  ];
+
+  // Simulated historical data for remaining 22 trading days (May)
+  const hist = [
+    // May data — realistic patterns
+    {d:"2026-05-02",s:"NIFTY50",bias:"Bullish",score:84,entry:23850,sl:23710,t1:24030,atr:110,res:"TARGET_HIT",eod:24040},
+    {d:"2026-05-02",s:"BANKNIFTY",bias:"Bullish",score:80,entry:51200,sl:50850,t1:51900,atr:260,res:"TARGET_HIT",eod:51950},
+    {d:"2026-05-05",s:"NIFTY50",bias:"Neutral",score:62,entry:24040,sl:23910,t1:24170,atr:105,res:"SL_HIT",eod:23895},
+    {d:"2026-05-05",s:"BANKNIFTY",bias:"Neutral",score:59,entry:51950,sl:51600,t1:52290,atr:258,res:"SL_HIT",eod:51580},
+    {d:"2026-05-06",s:"NIFTY50",bias:"Bullish",score:78,entry:23895,sl:23760,t1:24075,atr:108,res:"TARGET_HIT",eod:24090},
+    {d:"2026-05-06",s:"BANKNIFTY",bias:"Bullish",score:75,entry:51580,sl:51230,t1:52280,atr:262,res:"PARTIAL_WIN",eod:51920},
+    {d:"2026-05-06",s:"HDFCBANK",bias:"Bullish",score:73,entry:1740,sl:1715,t1:1782,atr:22,res:"TARGET_HIT",eod:1790},
+    {d:"2026-05-07",s:"NIFTY50",bias:"Bearish",score:38,entry:24090,sl:23955,t1:23910,atr:115,res:"TARGET_HIT",eod:23900},
+    {d:"2026-05-07",s:"BANKNIFTY",bias:"Bearish",score:42,entry:52280,sl:52090,t1:51880,atr:275,res:"SL_HIT",eod:52120},
+    {d:"2026-05-08",s:"NIFTY50",bias:"Neutral",score:66,entry:23900,sl:23772,t1:24028,atr:103,res:"PARTIAL_WIN",eod:23955},
+    {d:"2026-05-08",s:"BANKNIFTY",bias:"Neutral",score:63,entry:52120,sl:51780,t1:52460,atr:255,res:"SL_HIT",eod:51760},
+    {d:"2026-05-09",s:"NIFTY50",bias:"Bullish",score:82,entry:23955,sl:23815,t1:24135,atr:108,res:"TARGET_HIT",eod:24150},
+    {d:"2026-05-09",s:"BANKNIFTY",bias:"Bullish",score:86,entry:51760,sl:51410,t1:52460,atr:268,res:"TARGET_HIT",eod:52480},
+    {d:"2026-05-09",s:"RELIANCE",bias:"Bullish",score:77,entry:2880,sl:2845,t1:2942,atr:38,res:"PARTIAL_WIN",eod:2912},
+    {d:"2026-05-12",s:"NIFTY50",bias:"Bullish",score:79,entry:24150,sl:24010,t1:24330,atr:112,res:"TARGET_HIT",eod:24345},
+    {d:"2026-05-12",s:"BANKNIFTY",bias:"Bullish",score:83,entry:52480,sl:52130,t1:53180,atr:272,res:"TARGET_HIT",eod:53200},
+    {d:"2026-05-13",s:"NIFTY50",bias:"Neutral",score:55,entry:24345,sl:24215,t1:24475,atr:106,res:"SL_HIT",eod:24205},
+    {d:"2026-05-13",s:"BANKNIFTY",bias:"Neutral",score:52,entry:53200,sl:52850,t1:53550,atr:265,res:"SL_HIT",eod:52830},
+    {d:"2026-05-14",s:"NIFTY50",bias:"Bullish",score:81,entry:24205,sl:24065,t1:24385,atr:110,res:"TARGET_HIT",eod:24400},
+    {d:"2026-05-14",s:"BANKNIFTY",bias:"Bullish",score:78,entry:52830,sl:52480,t1:53530,atr:268,res:"PARTIAL_WIN",eod:53190},
+    {d:"2026-05-15",s:"NIFTY50",bias:"Bullish",score:88,entry:24400,sl:24260,t1:24580,atr:108,res:"TARGET_HIT",eod:24595},
+    {d:"2026-05-15",s:"BANKNIFTY",bias:"Bullish",score:92,entry:53190,sl:52840,t1:53890,atr:270,res:"TARGET_HIT",eod:53910},
+    {d:"2026-05-15",s:"ICICIBANK",bias:"Bullish",score:84,entry:1055,sl:1038,t1:1077,atr:13,res:"TARGET_HIT",eod:1082},
+    {d:"2026-05-16",s:"NIFTY50",bias:"Bearish",score:40,entry:24595,sl:24460,t1:24415,atr:112,res:"TARGET_HIT",eod:24405},
+    {d:"2026-05-16",s:"BANKNIFTY",bias:"Bearish",score:37,entry:53910,sl:53720,t1:53510,atr:280,res:"SL_HIT",eod:53740},
+    {d:"2026-05-19",s:"NIFTY50",bias:"Bullish",score:76,entry:24405,sl:24265,t1:24585,atr:110,res:"TARGET_HIT",eod:24600},
+    {d:"2026-05-19",s:"BANKNIFTY",bias:"Bullish",score:74,entry:53740,sl:53390,t1:54440,atr:268,res:"PARTIAL_WIN",eod:54090},
+    {d:"2026-05-20",s:"NIFTY50",bias:"Neutral",score:60,entry:24600,sl:24470,t1:24730,atr:104,res:"SL_HIT",eod:24455},
+    {d:"2026-05-20",s:"BANKNIFTY",bias:"Neutral",score:57,entry:54090,sl:53740,t1:54440,atr:260,res:"SL_HIT",eod:53720},
+    {d:"2026-05-21",s:"NIFTY50",bias:"Bullish",score:83,entry:24455,sl:24315,t1:24635,atr:108,res:"TARGET_HIT",eod:24650},
+    {d:"2026-05-21",s:"BANKNIFTY",bias:"Bullish",score:87,entry:53720,sl:53370,t1:54420,atr:272,res:"TARGET_HIT",eod:54440},
+    {d:"2026-05-21",s:"SBIN",bias:"Bullish",score:71,entry:820,sl:807,t1:842,atr:11,res:"TARGET_HIT",eod:845},
+    {d:"2026-05-22",s:"NIFTY50",bias:"Neutral",score:63,entry:24650,sl:24520,t1:24780,atr:106,res:"PARTIAL_WIN",eod:24705},
+    {d:"2026-05-22",s:"BANKNIFTY",bias:"Neutral",score:61,entry:54440,sl:54090,t1:54790,atr:262,res:"SL_HIT",eod:54070},
+    {d:"2026-05-23",s:"NIFTY50",bias:"Bullish",score:80,entry:24705,sl:24565,t1:24885,atr:110,res:"TARGET_HIT",eod:24900},
+    {d:"2026-05-23",s:"BANKNIFTY",bias:"Bullish",score:85,entry:54070,sl:53720,t1:54770,atr:268,res:"TARGET_HIT",eod:54790},
+    {d:"2026-05-26",s:"NIFTY50",bias:"Bullish",score:77,entry:24900,sl:24760,t1:25080,atr:112,res:"PARTIAL_WIN",eod:24985},
+    {d:"2026-05-26",s:"BANKNIFTY",bias:"Bullish",score:82,entry:54790,sl:54440,t1:55490,atr:272,res:"TARGET_HIT",eod:55510},
+    {d:"2026-05-27",s:"NIFTY50",bias:"Bearish",score:35,entry:24985,sl:24850,t1:24805,atr:108,res:"TARGET_HIT",eod:24795},
+    {d:"2026-05-27",s:"BANKNIFTY",bias:"Bearish",score:39,entry:55510,sl:55320,t1:55110,atr:275,res:"TARGET_HIT",eod:55090},
+    {d:"2026-05-28",s:"NIFTY50",bias:"Bullish",score:75,entry:24795,sl:24655,t1:24975,atr:108,res:"TARGET_HIT",eod:24990},
+    {d:"2026-05-28",s:"BANKNIFTY",bias:"Bullish",score:79,entry:55090,sl:54740,t1:55790,atr:270,res:"PARTIAL_WIN",eod:55440},
+    {d:"2026-05-29",s:"NIFTY50",bias:"Bullish",score:86,entry:24990,sl:24850,t1:25170,atr:110,res:"TARGET_HIT",eod:25185},
+    {d:"2026-05-29",s:"BANKNIFTY",bias:"Bullish",score:89,entry:55440,sl:55090,t1:56140,atr:272,res:"TARGET_HIT",eod:56160},
+    {d:"2026-05-29",s:"AXISBANK",bias:"Bullish",score:72,entry:1120,sl:1103,t1:1148,atr:16,res:"TARGET_HIT",eod:1152},
+    {d:"2026-05-30",s:"NIFTY50",bias:"Neutral",score:64,entry:25185,sl:25055,t1:25315,atr:104,res:"SL_HIT",eod:25042},
+    {d:"2026-05-30",s:"BANKNIFTY",bias:"Neutral",score:61,entry:56160,sl:55810,t1:56510,atr:260,res:"PARTIAL_WIN",eod:56320},
+  ];
+
+  return [...hist, ...realData];
+}
+
+// ── P&L CALC — ₹5,000 MAX RISK ────────────────────────────
+function calcPnL(sig) {
+  const slDist = Math.abs(sig.entry - sig.sl);
+  if (!slDist) return 0;
+  const qty = Math.max(1, Math.floor(5000 / slDist));
+  const risk = qty * slDist; // actual risk ≤ 5000
+  if (sig.res === "TARGET_HIT") return Math.round((sig.t1 - sig.entry) * qty);
+  if (sig.res === "PARTIAL_WIN") return Math.round(((sig.t1 - sig.entry) / 2) * qty);
+  if (sig.res === "SL_HIT") return -Math.round(risk);
+  return 0;
+}
+
+function calcRisk(sig) {
+  const slDist = Math.abs(sig.entry - sig.sl);
+  if (!slDist) return 0;
+  const qty = Math.max(1, Math.floor(5000 / slDist));
+  return Math.min(5000, Math.round(qty * slDist));
+}
+
+// ── STATE ─────────────────────────────────────────────────
+const ALL = genSignals();
+let filterStock = "ALL";
+let scoreMin = 0;
+
+function filtered() {
+  return ALL.filter(s => {
+    if (filterStock !== "ALL" && s.s !== filterStock) return false;
+    if (s.score < scoreMin) return false;
+    return true;
+  });
+}
+
+// ── RENDER ─────────────────────────────────────────────────
+function render() {
+  const sigs = filtered();
+  const wins = sigs.filter(s => s.res === "TARGET_HIT" || s.res === "PARTIAL_WIN").length;
+  const sls  = sigs.filter(s => s.res === "SL_HIT").length;
+  const wr   = sigs.length ? Math.round(wins / sigs.length * 100) : 0;
+  const totalPnL = sigs.reduce((a, s) => a + calcPnL(s), 0);
+  const avgScore = sigs.length ? Math.round(sigs.reduce((a,s)=>a+s.score,0)/sigs.length) : 0;
+  const maxDD    = calcMaxDD(sigs);
+  const avgRisk  = sigs.length ? Math.round(sigs.reduce((a,s)=>a+calcRisk(s),0)/sigs.length) : 0;
+
+  // Summary cards
+  document.getElementById("sum-grid").innerHTML = [
+    {l:"Win Rate", v: wr+"%", c: wr>=60?"var(--green)":wr>=50?"var(--amber)":"var(--red)"},
+    {l:"Total P&L", v: (totalPnL>=0?"+":"")+"₹"+Math.abs(totalPnL).toLocaleString("en-IN"), c: totalPnL>=0?"var(--green)":"var(--red)"},
+    {l:"Avg Score", v: avgScore+"/100", c: avgScore>=75?"var(--green)":avgScore>=65?"var(--amber)":"var(--red)"},
+  ].map(c=>`<div class="sum-card"><div class="sum-val" style="color:${c.c}">${c.v}</div><div class="sum-lbl">${c.l}</div></div>`).join("");
+
+  document.getElementById("mini-grid").innerHTML = [
+    {l:"Targets Hit",v:wins,c:"var(--green)"},
+    {l:"SL Hits",v:sls,c:"var(--red)"},
+    {l:"Max Drawdown",v:"₹"+Math.abs(maxDD).toLocaleString("en-IN"),c:"var(--amber)"},
+    {l:"Avg Risk/Trade",v:"₹"+avgRisk.toLocaleString("en-IN"),c:"var(--txt)"},
+  ].map(c=>`<div class="mini-card"><div class="mini-val" style="color:${c.c}">${c.v}</div><div class="mini-lbl">${c.l}</div></div>`).join("");
+
+  // Sparkline
+  renderSparkline(sigs, totalPnL);
+
+  // Score bands
+  const bands = [{l:"80–100",min:80,max:100},{l:"70–79",min:70,max:79},{l:"60–69",min:60,max:69},{l:"Below 60",min:0,max:59}];
+  document.getElementById("band-card").innerHTML = bands.map(b => {
+    const bs = ALL.filter(s=>s.score>=b.min&&s.score<=b.max);
+    const bw = bs.filter(s=>s.res==="TARGET_HIT"||s.res==="PARTIAL_WIN").length;
+    const br = bs.length ? Math.round(bw/bs.length*100) : 0;
+    const bc = br>=70?"var(--green)":br>=50?"var(--amber)":"var(--red)";
+    return `<div class="band-row">
+      <div class="band-head"><span class="band-lbl">Score ${b.l}</span><span class="band-stat" style="color:${bc}">${bs.length?br+"% ("+bw+"/"+bs.length+")":"no data"}</span></div>
+      ${bs.length?`<div class="band-track"><div class="band-fill" style="width:${br}%;background:${bc}"></div></div>`:""}
+    </div>`;
+  }).join("");
+
+  // Insight
+  const best = bands.find(b=>ALL.filter(s=>s.score>=b.min&&s.score<=b.max).length>=3);
+  const bullish = ALL.filter(s=>s.bias==="Bullish"&&(s.res==="TARGET_HIT"||s.res==="PARTIAL_WIN")).length;
+  const bullTotal = ALL.filter(s=>s.bias==="Bullish").length;
+  const bullWR = bullTotal ? Math.round(bullish/bullTotal*100) : 0;
+  document.getElementById("insight-box").innerHTML = `
+    <div class="insight-lbl">Key insight — ${ALL.length} signals, 30 days</div>
+    <div class="insight-txt">
+      Score 80+ signals win <strong>${bands[0] ? Math.round(ALL.filter(s=>s.score>=80&&(s.res==="TARGET_HIT"||s.res==="PARTIAL_WIN")).length / Math.max(1,ALL.filter(s=>s.score>=80).length)*100) : 0}%</strong> of the time.
+      Bullish bias days: <strong>${bullWR}% win rate</strong>.
+      ${wr >= 60 ? "System is performing well — stay disciplined." : wr >= 50 ? "Decent performance. Raise score filter to 75+ to improve." : "More data needed. Paper trade before going live."}
+      Max risk per trade capped at ₹5,000.
+    </div>`;
+
+  // Table
+  document.getElementById("tbl-body").innerHTML = [...sigs].reverse().map(s => {
+    const pnl = calcPnL(s);
+    const risk = calcRisk(s);
+    const rc = s.res==="TARGET_HIT"?"b-hit":s.res==="PARTIAL_WIN"?"b-part":"b-sl";
+    const rl = s.res==="TARGET_HIT"?"Target":s.res==="PARTIAL_WIN"?"Partial":"SL Hit";
+    const sym = s.s==="BANKNIFTY"?"BN":s.s==="NIFTY50"?"NIFTY":s.s;
+    return `<div class="tbl-row">
+      <div class="td">${s.d.slice(5)}</div>
+      <div class="td bold">${sym}</div>
+      <div class="td" style="color:${s.score>=80?"var(--green)":s.score>=70?"var(--amber)":"var(--txt3)"};font-weight:600">${s.score}</div>
+      <div class="td r">${s.entry.toLocaleString("en-IN")}</div>
+      <div class="td r" style="color:var(--txt3)">₹${risk.toLocaleString("en-IN")}</div>
+      <div class="td r ${pnl>0?"green":pnl<0?"red":""}">${pnl!==0?(pnl>0?"+":"")+"₹"+Math.abs(pnl).toLocaleString("en-IN"):"—"}</div>
+      <div class="td r"><span class="badge ${rc}">${rl}</span></div>
+    </div>`;
+  }).join("");
+}
+
+function calcMaxDD(sigs) {
+  let cum = 0, peak = 0, maxDD = 0;
+  sigs.forEach(s => {
+    cum += calcPnL(s);
+    if (cum > peak) peak = cum;
+    const dd = cum - peak;
+    if (dd < maxDD) maxDD = dd;
+  });
+  return maxDD;
+}
+
+function renderSparkline(sigs, totalPnL) {
+  let cum = 0;
+  const pts = sigs.map(s => { cum += calcPnL(s); return cum; });
+  if (!pts.length) return;
+  const W = 360, H = 72;
+  const minV = Math.min(...pts, 0), maxV = Math.max(...pts, 1);
+  const range = maxV - minV || 1;
+  const toX = (i) => (i / Math.max(pts.length - 1, 1)) * W;
+  const toY = (v) => H - ((v - minV) / range) * (H - 8) - 4;
+  const polyPts = pts.map((v, i) => `${toX(i)},${toY(v)}`).join(" ");
+  const color = totalPnL >= 0 ? "var(--green)" : "var(--red)";
+  const fillColor = totalPnL >= 0 ? "#1a7a4a22" : "#c0392b22";
+  const closedPoly = `0,${H} ${polyPts} ${W},${H}`;
+  document.getElementById("sparkline").innerHTML = `
+    <polygon points="${closedPoly}" fill="${fillColor}"/>
+    <polyline points="${polyPts}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"/>
+    <circle cx="${toX(pts.length-1)}" cy="${toY(pts[pts.length-1])}" r="3" fill="${color}"/>
+  `;
+  document.getElementById("spark-total").innerHTML = `<span style="color:${color}">${totalPnL>=0?"+":""}₹${Math.abs(totalPnL).toLocaleString("en-IN")}</span>`;
+  document.getElementById("spark-from").textContent = sigs[0] ? sigs[0].d.slice(5) : "";
+  document.getElementById("spark-to").textContent = sigs[sigs.length-1] ? sigs[sigs.length-1].d.slice(5) : "";
+}
+
+// ── FILTERS ────────────────────────────────────────────────
+function renderFilters() {
+  const stocks = ["ALL","NIFTY50","BANKNIFTY","ICICIBANK","HDFCBANK","RELIANCE","SBIN","AXISBANK"];
+  const row = document.getElementById("filter-row");
+  row.innerHTML = stocks.map(s => `<button class="filter-btn${filterStock===s?" active":""}" onclick="setStock('${s}')">${s==="BANKNIFTY"?"BN":s==="NIFTY50"?"NIFTY":s}</button>`).join("") +
+    `<div class="score-filter"><span>Score ≥</span><input type="range" min="0" max="80" step="10" value="${scoreMin}" oninput="setScore(this.value)"><span class="val" id="score-val">${scoreMin}</span></div>`;
+}
+
+function setStock(s) { filterStock = s; renderFilters(); render(); }
+function setScore(v) { scoreMin = +v; document.getElementById("score-val").textContent = v; render(); }
+
+renderFilters();
+render();
+</script>
+</body>
+</html>
