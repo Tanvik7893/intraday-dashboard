@@ -14,8 +14,12 @@ const MIME = {
 };
 
 http.createServer((req, res) => {
-  // Always serve index.html for any route (SPA)
-  const filePath = path.join(__dirname, 'index.html');
+  // Serve backtest.html if requested, otherwise index.html
+  const url = req.url.split('?')[0];
+  const allowed = ['/backtest.html'];
+  const filePath = allowed.includes(url)
+    ? path.join(__dirname, url.slice(1))
+    : path.join(__dirname, 'index.html');
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
