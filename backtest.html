@@ -143,78 +143,32 @@ html,body{background:var(--bg);color:var(--txt);font-family:'Inter',system-ui,sa
 </div>
 
 <script>
-// ── GENERATE 30 DAYS OF REALISTIC DATA ────────────────────────────
-function genSignals() {
-  const signals = [];
-  // Start from real DB data
-  const realData = [
-    {d:"2026-06-02",s:"NIFTY50",bias:"Bullish",score:82,entry:24180,sl:24040,t1:24360,atr:115,res:"TARGET_HIT",eod:24390},
-    {d:"2026-06-02",s:"BANKNIFTY",bias:"Bullish",score:88,entry:51800,sl:51450,t1:52500,atr:270,res:"TARGET_HIT",eod:52540},
-    {d:"2026-06-02",s:"ICICIBANK",bias:"Bullish",score:79,entry:1062,sl:1045,t1:1084,atr:14,res:"PARTIAL_WIN",eod:1078},
-    {d:"2026-06-03",s:"NIFTY50",bias:"Neutral",score:61,entry:24390,sl:24260,t1:24520,atr:108,res:"SL_HIT",eod:24255},
-    {d:"2026-06-03",s:"BANKNIFTY",bias:"Neutral",score:58,entry:52540,sl:52200,t1:52880,atr:265,res:"SL_HIT",eod:52185},
-    {d:"2026-06-03",s:"ICICIBANK",bias:"Neutral",score:64,entry:1078,sl:1062,t1:1096,atr:13,res:"PARTIAL_WIN",eod:1082},
-    {d:"2026-06-04",s:"NIFTY50",bias:"Bearish",score:44,entry:24255,sl:24120,t1:24080,atr:120,res:"TARGET_HIT",eod:24068},
-    {d:"2026-06-04",s:"BANKNIFTY",bias:"Bearish",score:41,entry:52185,sl:52000,t1:51800,atr:280,res:"TARGET_HIT",eod:51780},
-    {d:"2026-06-04",s:"ICICIBANK",bias:"Bearish",score:52,entry:1082,sl:1068,t1:1065,atr:13,res:"PARTIAL_WIN",eod:1071},
-    {d:"2026-06-05",s:"NIFTY50",bias:"Bullish",score:85,entry:24350,sl:24210,t1:24530,atr:112,res:"TARGET_HIT",eod:24548},
-    {d:"2026-06-05",s:"BANKNIFTY",bias:"Bullish",score:91,entry:51900,sl:51550,t1:52600,atr:275,res:"TARGET_HIT",eod:52640},
-    {d:"2026-06-05",s:"ICICIBANK",bias:"Bullish",score:87,entry:1068,sl:1051,t1:1090,atr:14,res:"TARGET_HIT",eod:1093},
-  ];
+// ── LOAD REAL BACKTEST DATA FROM DB ─────────────────────────
+const PROXY = 'https://n8n.srv1631602.hstgr.cloud/webhook/intraday-dashboard-data';
 
-  // Simulated historical data for remaining 22 trading days (May)
-  const hist = [
-    // May data — realistic patterns
-    {d:"2026-05-02",s:"NIFTY50",bias:"Bullish",score:84,entry:23850,sl:23710,t1:24030,atr:110,res:"TARGET_HIT",eod:24040},
-    {d:"2026-05-02",s:"BANKNIFTY",bias:"Bullish",score:80,entry:51200,sl:50850,t1:51900,atr:260,res:"TARGET_HIT",eod:51950},
-    {d:"2026-05-05",s:"NIFTY50",bias:"Neutral",score:62,entry:24040,sl:23910,t1:24170,atr:105,res:"SL_HIT",eod:23895},
-    {d:"2026-05-05",s:"BANKNIFTY",bias:"Neutral",score:59,entry:51950,sl:51600,t1:52290,atr:258,res:"SL_HIT",eod:51580},
-    {d:"2026-05-06",s:"NIFTY50",bias:"Bullish",score:78,entry:23895,sl:23760,t1:24075,atr:108,res:"TARGET_HIT",eod:24090},
-    {d:"2026-05-06",s:"BANKNIFTY",bias:"Bullish",score:75,entry:51580,sl:51230,t1:52280,atr:262,res:"PARTIAL_WIN",eod:51920},
-    {d:"2026-05-06",s:"HDFCBANK",bias:"Bullish",score:73,entry:1740,sl:1715,t1:1782,atr:22,res:"TARGET_HIT",eod:1790},
-    {d:"2026-05-07",s:"NIFTY50",bias:"Bearish",score:38,entry:24090,sl:23955,t1:23910,atr:115,res:"TARGET_HIT",eod:23900},
-    {d:"2026-05-07",s:"BANKNIFTY",bias:"Bearish",score:42,entry:52280,sl:52090,t1:51880,atr:275,res:"SL_HIT",eod:52120},
-    {d:"2026-05-08",s:"NIFTY50",bias:"Neutral",score:66,entry:23900,sl:23772,t1:24028,atr:103,res:"PARTIAL_WIN",eod:23955},
-    {d:"2026-05-08",s:"BANKNIFTY",bias:"Neutral",score:63,entry:52120,sl:51780,t1:52460,atr:255,res:"SL_HIT",eod:51760},
-    {d:"2026-05-09",s:"NIFTY50",bias:"Bullish",score:82,entry:23955,sl:23815,t1:24135,atr:108,res:"TARGET_HIT",eod:24150},
-    {d:"2026-05-09",s:"BANKNIFTY",bias:"Bullish",score:86,entry:51760,sl:51410,t1:52460,atr:268,res:"TARGET_HIT",eod:52480},
-    {d:"2026-05-09",s:"RELIANCE",bias:"Bullish",score:77,entry:2880,sl:2845,t1:2942,atr:38,res:"PARTIAL_WIN",eod:2912},
-    {d:"2026-05-12",s:"NIFTY50",bias:"Bullish",score:79,entry:24150,sl:24010,t1:24330,atr:112,res:"TARGET_HIT",eod:24345},
-    {d:"2026-05-12",s:"BANKNIFTY",bias:"Bullish",score:83,entry:52480,sl:52130,t1:53180,atr:272,res:"TARGET_HIT",eod:53200},
-    {d:"2026-05-13",s:"NIFTY50",bias:"Neutral",score:55,entry:24345,sl:24215,t1:24475,atr:106,res:"SL_HIT",eod:24205},
-    {d:"2026-05-13",s:"BANKNIFTY",bias:"Neutral",score:52,entry:53200,sl:52850,t1:53550,atr:265,res:"SL_HIT",eod:52830},
-    {d:"2026-05-14",s:"NIFTY50",bias:"Bullish",score:81,entry:24205,sl:24065,t1:24385,atr:110,res:"TARGET_HIT",eod:24400},
-    {d:"2026-05-14",s:"BANKNIFTY",bias:"Bullish",score:78,entry:52830,sl:52480,t1:53530,atr:268,res:"PARTIAL_WIN",eod:53190},
-    {d:"2026-05-15",s:"NIFTY50",bias:"Bullish",score:88,entry:24400,sl:24260,t1:24580,atr:108,res:"TARGET_HIT",eod:24595},
-    {d:"2026-05-15",s:"BANKNIFTY",bias:"Bullish",score:92,entry:53190,sl:52840,t1:53890,atr:270,res:"TARGET_HIT",eod:53910},
-    {d:"2026-05-15",s:"ICICIBANK",bias:"Bullish",score:84,entry:1055,sl:1038,t1:1077,atr:13,res:"TARGET_HIT",eod:1082},
-    {d:"2026-05-16",s:"NIFTY50",bias:"Bearish",score:40,entry:24595,sl:24460,t1:24415,atr:112,res:"TARGET_HIT",eod:24405},
-    {d:"2026-05-16",s:"BANKNIFTY",bias:"Bearish",score:37,entry:53910,sl:53720,t1:53510,atr:280,res:"SL_HIT",eod:53740},
-    {d:"2026-05-19",s:"NIFTY50",bias:"Bullish",score:76,entry:24405,sl:24265,t1:24585,atr:110,res:"TARGET_HIT",eod:24600},
-    {d:"2026-05-19",s:"BANKNIFTY",bias:"Bullish",score:74,entry:53740,sl:53390,t1:54440,atr:268,res:"PARTIAL_WIN",eod:54090},
-    {d:"2026-05-20",s:"NIFTY50",bias:"Neutral",score:60,entry:24600,sl:24470,t1:24730,atr:104,res:"SL_HIT",eod:24455},
-    {d:"2026-05-20",s:"BANKNIFTY",bias:"Neutral",score:57,entry:54090,sl:53740,t1:54440,atr:260,res:"SL_HIT",eod:53720},
-    {d:"2026-05-21",s:"NIFTY50",bias:"Bullish",score:83,entry:24455,sl:24315,t1:24635,atr:108,res:"TARGET_HIT",eod:24650},
-    {d:"2026-05-21",s:"BANKNIFTY",bias:"Bullish",score:87,entry:53720,sl:53370,t1:54420,atr:272,res:"TARGET_HIT",eod:54440},
-    {d:"2026-05-21",s:"SBIN",bias:"Bullish",score:71,entry:820,sl:807,t1:842,atr:11,res:"TARGET_HIT",eod:845},
-    {d:"2026-05-22",s:"NIFTY50",bias:"Neutral",score:63,entry:24650,sl:24520,t1:24780,atr:106,res:"PARTIAL_WIN",eod:24705},
-    {d:"2026-05-22",s:"BANKNIFTY",bias:"Neutral",score:61,entry:54440,sl:54090,t1:54790,atr:262,res:"SL_HIT",eod:54070},
-    {d:"2026-05-23",s:"NIFTY50",bias:"Bullish",score:80,entry:24705,sl:24565,t1:24885,atr:110,res:"TARGET_HIT",eod:24900},
-    {d:"2026-05-23",s:"BANKNIFTY",bias:"Bullish",score:85,entry:54070,sl:53720,t1:54770,atr:268,res:"TARGET_HIT",eod:54790},
-    {d:"2026-05-26",s:"NIFTY50",bias:"Bullish",score:77,entry:24900,sl:24760,t1:25080,atr:112,res:"PARTIAL_WIN",eod:24985},
-    {d:"2026-05-26",s:"BANKNIFTY",bias:"Bullish",score:82,entry:54790,sl:54440,t1:55490,atr:272,res:"TARGET_HIT",eod:55510},
-    {d:"2026-05-27",s:"NIFTY50",bias:"Bearish",score:35,entry:24985,sl:24850,t1:24805,atr:108,res:"TARGET_HIT",eod:24795},
-    {d:"2026-05-27",s:"BANKNIFTY",bias:"Bearish",score:39,entry:55510,sl:55320,t1:55110,atr:275,res:"TARGET_HIT",eod:55090},
-    {d:"2026-05-28",s:"NIFTY50",bias:"Bullish",score:75,entry:24795,sl:24655,t1:24975,atr:108,res:"TARGET_HIT",eod:24990},
-    {d:"2026-05-28",s:"BANKNIFTY",bias:"Bullish",score:79,entry:55090,sl:54740,t1:55790,atr:270,res:"PARTIAL_WIN",eod:55440},
-    {d:"2026-05-29",s:"NIFTY50",bias:"Bullish",score:86,entry:24990,sl:24850,t1:25170,atr:110,res:"TARGET_HIT",eod:25185},
-    {d:"2026-05-29",s:"BANKNIFTY",bias:"Bullish",score:89,entry:55440,sl:55090,t1:56140,atr:272,res:"TARGET_HIT",eod:56160},
-    {d:"2026-05-29",s:"AXISBANK",bias:"Bullish",score:72,entry:1120,sl:1103,t1:1148,atr:16,res:"TARGET_HIT",eod:1152},
-    {d:"2026-05-30",s:"NIFTY50",bias:"Neutral",score:64,entry:25185,sl:25055,t1:25315,atr:104,res:"SL_HIT",eod:25042},
-    {d:"2026-05-30",s:"BANKNIFTY",bias:"Neutral",score:61,entry:56160,sl:55810,t1:56510,atr:260,res:"PARTIAL_WIN",eod:56320},
-  ];
-
-  return [...hist, ...realData];
+async function loadBacktestData() {
+  try {
+    const res = await fetch(`${PROXY}?type=backtest`);
+    const json = await res.json();
+    // Expect array of rows from intraday_daily_signals with signal_result field
+    const rows = json.backtest || json.data || json.rows || [];
+    if (!rows.length) return null;
+    return rows.map(r => ({
+      d: r.signal_date || r.d,
+      s: r.stock || r.s,
+      bias: r.bias,
+      score: r.score || 0,
+      entry: r.entry_price || r.entry || 0,
+      sl: r.sl_price || r.sl || 0,
+      t1: r.target1 || r.t1 || 0,
+      atr: Math.abs((r.entry_price||r.entry||0) - (r.sl_price||r.sl||0)),
+      res: r.signal_result || r.res || 'EXPIRED',
+      eod: r.eod_price || r.eod || r.entry_price || 0
+    })).sort((a,b) => a.d > b.d ? 1 : -1);
+  } catch(e) {
+    console.error('Failed to load backtest data:', e);
+    return null;
+  }
 }
 
 // ── P&L CALC — ₹5,000 MAX RISK ────────────────────────────
@@ -237,7 +191,7 @@ function calcRisk(sig) {
 }
 
 // ── STATE ─────────────────────────────────────────────────
-const ALL = genSignals();
+let ALL = [];
 let filterStock = "ALL";
 let scoreMin = 0;
 
@@ -368,8 +322,23 @@ function renderFilters() {
 function setStock(s) { filterStock = s; renderFilters(); render(); }
 function setScore(v) { scoreMin = +v; document.getElementById("score-val").textContent = v; render(); }
 
-renderFilters();
-render();
+// ── INIT ─────────────────────────────────────────────────
+(async function init() {
+  // Show loading state
+  document.getElementById("sum-grid").innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--txt3);font-size:12px">Loading real backtest data...</div>';
+
+  const data = await loadBacktestData();
+  if (data && data.length > 0) {
+    ALL = data;
+    document.getElementById("insight-box").innerHTML = `<div class="insight-lbl">✓ Real data — ${ALL.length} signals from Upstox</div><div class="insight-txt">Loading analysis...</div>`;
+  } else {
+    // Fallback: show error message
+    document.getElementById("sum-grid").innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--red);font-size:12px">Could not load data. Run backtest workflow first.</div>';
+    document.getElementById("insight-box").innerHTML = '<div class="insight-lbl">No data</div><div class="insight-txt">Trigger the Real Backtest workflow in n8n to populate data.</div>';
+  }
+  renderFilters();
+  render();
+})();
 </script>
 </body>
 </html>
