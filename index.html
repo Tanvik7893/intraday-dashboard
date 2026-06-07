@@ -711,10 +711,31 @@ function buildSignalList(sigs, pm, ats){
     const rankCls=at?'rk-live':isPrimary?'rk-primary':'rk-backup';
     const tagTxt=at?'LIVE':isPrimary?'PRIMARY':'BACKUP';
     const tagCls=at?'st-live':isPrimary?'st-primary':'st-backup';
-    const strike=s.entry_price>0?Math.round(s.entry_price/100)*100:0;
-    const prem=Math.round(s.entry_price*0.004);
-    const opts=s.stock==='NIFTY50'||s.stock==='BANKNIFTY'?`Buy ATM call strike ${strike}. Approx ₹${prem}/lot. Max loss = full premium paid.`:`${sn(s.stock)} options strike ~${strike}. Ensure lot × premium ≤ ₹5,000.`;
-    const qty=s.entry_price>0&&s.sl_price>0?Math.max(1,Math.floor(5000/Math.abs(s.entry_price-s.sl_price))):'—';
+    // Lot sizes per instrument
+    const LOT_SZ={NIFTY50:75,BANKNIFTY:30,HDFCBANK:550,RELIANCE:250,ICICIBANK:700,SBIN:1500,TATAMOTORS:900,AXISBANK:625,INFY:300,TCS:150,KOTAKBANK:400,BAJFINANCE:125,MARUTI:50,TITAN:375,SUNPHARMA:700,WIPRO:1500,HCLTECH:350,TECHM:500,LT:150,BHARTIARTL:475,ITC:2400,HINDUNILVR:300};
+    const lotSz=LOT_SZ[s.stock]||100;
+    const slDist=s.entry_price>0&&s.sl_price>0?Math.abs(s.entry_price-s.sl_price):s.entry_price*0.005;
+    const t1Dist=s.entry_price>0&&s.target1>0?Math.abs(s.target1-s.entry_price):slDist*1.5;
+    const t2Dist=s.entry_price>0&&s.target2>0?Math.abs(s.target2-s.entry_price):slDist*2.5;
+    const riskPerLot=Math.round(slDist*lotSz);
+    const lots=riskPerLot>0?Math.max(1,Math.floor(15000/riskPerLot)):1;
+    const totalRisk=riskPerLot*lots;
+    const t1Profit=Math.round(t1Dist*lotSz*lots);
+    const t2Profit=Math.round(t2Dist*lotSz*lots);
+    // Strike: NIFTY nearest 50, BN nearest 100, stocks nearest 5
+    const strikeStep=s.stock==='NIFTY50'?50:s.stock==='BANKNIFTY'?100:5;
+    const strike=s.entry_price>0?Math.round(s.entry_price/strikeStep)*strikeStep:0;
+    const optType=s.bias==='Bullish'||s.bias==='bullish'?'CE':'PE';
+    const optBias=s.bias==='Bullish'||s.bias==='bullish'?'Bullish':'Bearish';
+    // Live price
+    const livePrice=cp||s.entry_price||0;
+    const priceDiffToEntry=s.entry_price>0?Math.round(livePrice-s.entry_price):0;
+    const isGo=optBias==='Bullish'?livePrice>=s.entry_price:livePrice<=s.entry_price;
+    const goLabel=isGo?'GO ✓':'WAIT';
+    const goColor=isGo?'var(--green)':'var(--amber)';
+    const goDesc=isGo?'Price is at/past entry — can trade now':'Wait for 9:30 ORB, price not at entry yet';
+    const opts=`Buy ${strike} ${optType} (${optBias}) · ${lots} lot${lots>1?'s':''} (${lots*lotSz} units) · Risk: ₹${totalRisk.toLocaleString('en-IN')} · T1: +₹${t1Profit.toLocaleString('en-IN')}`;
+    const qty=Math.round(lots*lotSz);
     const ts=s.trend_score||18,vs=s.vol_score||12,ms=s.momo_score||10,rs=s.rs_score||12;
     const verdict=total>=85?'Very high confidence. All signals aligned.':total>=75?'Good setup. Main signals agree.':'Moderate — consider smaller size.';
 
@@ -741,26 +762,40 @@ function buildSignalList(sigs, pm, ats){
       <div class="sig-row-head">
         <div class="sig-rank ${rankCls}">${i+1}</div>
         <div class="sig-main">
-          <div class="sig-name-row"><div class="sig-name">${sn(s.stock)}</div><div class="sig-tag ${tagCls}">${tagTxt}</div></div>
-          <div class="sig-levels">SL <span class="sl">${fmt(s.sl_price)}</span> · T1 <span class="tg">${fmt(s.target1)}</span> · T2 <span class="tg">${fmt(s.target2)}</span></div>
+          <div class="sig-name-row"><div class="sig-name">${sn(s.stock)}</div><div class="sig-tag ${tagCls}">${tagTxt}</div><div class="sig-tag" style="background:${isGo?'var(--green-bg)':'var(--amber-bg)'};color:${goColor};border-color:${isGo?'var(--green-bd)':'var(--amber-bd)'}">${goLabel}</div></div>
+          <div class="sig-levels">SL <span class="sl">${fmt(s.sl_price)}</span> · T1 <span class="tg">${fmt(s.target1)}</span> · <span style="font-size:10px;font-weight:600;color:${optType==='CE'?'var(--green)':'var(--red)'}">${strike} ${optType}</span></div>
         </div>
         <div class="sig-right">
-          <div class="sig-entry">${fmt(s.entry_price)}</div>
-          <div class="sig-entry-lbl">entry above</div>
+          <div class="sig-entry">${livePrice>0?fmt(livePrice):fmt(s.entry_price)}</div>
+          <div class="sig-entry-lbl">${livePrice>0?'live price':'entry'}</div>
           <div class="sig-score">${total}/100</div>
         </div>
       </div>
       ${liveStrip}
       <div class="sig-expanded" id="exp-${i}">
         <div class="exp-body">
-          <div class="exp-entry-block"><div class="exp-entry-lbl">Enter above</div><div class="exp-entry-val">${fmt(s.entry_price)}</div><div class="exp-entry-hint">Only after price crosses this level</div></div>
+          <div class="exp-entry-block">
+            <div class="exp-entry-lbl">Live price</div>
+            <div class="exp-entry-val">${livePrice>0?fmt(livePrice):fmt(s.entry_price)}</div>
+            <div class="exp-entry-hint" style="color:${goColor};font-weight:600">${goDesc}</div>
+          </div>
           <div class="exp-levels">
+            <div class="exp-level"><div class="exp-lev-lbl">Entry</div><div class="exp-lev-val">${fmt(s.entry_price)}</div></div>
             <div class="exp-level"><div class="exp-lev-lbl">Stop loss</div><div class="exp-lev-val c-sl">${fmt(s.sl_price)}</div></div>
+            <div class="exp-level"><div class="exp-lev-lbl">SL dist</div><div class="exp-lev-val c-sl">${Math.round(slDist)} pts</div></div>
+          </div>
+          <div class="exp-levels" style="margin-top:4px">
             <div class="exp-level"><div class="exp-lev-lbl">Target 1</div><div class="exp-lev-val c-t1">${fmt(s.target1)}</div></div>
+            <div class="exp-level"><div class="exp-lev-lbl">T1 profit</div><div class="exp-lev-val c-t1">+₹${t1Profit.toLocaleString('en-IN')}</div></div>
             <div class="exp-level"><div class="exp-lev-lbl">Target 2</div><div class="exp-lev-val c-t2">${fmt(s.target2)}</div></div>
           </div>
-          <div class="exp-opts"><div class="exp-opts-lbl">Options — ₹5K</div><div class="exp-opts-val">${opts}</div></div>
-          <div class="exp-why"><div class="exp-why-lbl">Why this trade</div><div class="exp-why-val">Score ${total}/100. Trend, volume, ORB and relative strength aligned. Day move: ${s.day_change_pct>=0?'+':''}${(s.day_change_pct||0).toFixed(2)}%.</div></div>
+          <div class="exp-opts"><div class="exp-opts-lbl">Options — ≤ ₹15K risk</div><div class="exp-opts-val">${opts}</div></div>
+          <div class="exp-levels" style="margin-top:4px;background:var(--green-bg);border-radius:8px;padding:8px">
+            <div class="exp-level"><div class="exp-lev-lbl">Lots</div><div class="exp-lev-val" style="color:var(--green)">${lots} × ${lotSz} = ${qty} units</div></div>
+            <div class="exp-level"><div class="exp-lev-lbl">Max risk</div><div class="exp-lev-val" style="color:var(--red)">₹${totalRisk.toLocaleString('en-IN')}</div></div>
+            <div class="exp-level"><div class="exp-lev-lbl">T2 profit</div><div class="exp-lev-val c-t2">+₹${t2Profit.toLocaleString('en-IN')}</div></div>
+          </div>
+          <div class="exp-why"><div class="exp-why-lbl">Why this trade</div><div class="exp-why-val">Score ${total}/100. ${optBias} bias — buy ${strike} ${optType}. SL is ${Math.round(slDist)} pts away (ATR-based). Day move: ${s.day_change_pct>=0?'+':''}${(s.day_change_pct||0).toFixed(2)}%.</div></div>
           <div class="exp-score-toggle" onclick="event.stopPropagation();document.getElementById('sp-${i}').classList.toggle('open')">▸ View score breakdown</div>
           <div class="exp-score-panel" id="sp-${i}">
             <div class="score-row"><div class="score-lbl">Trend alignment</div><div class="score-track"><div class="score-fill" style="width:${ts/25*100}%;background:${ts>=18?'var(--green)':ts>=12?'var(--amber)':'var(--red)'}"></div></div><div class="score-val" style="color:${ts>=18?'var(--green)':ts>=12?'var(--amber)':'var(--red)'}">${ts}</div></div>
@@ -770,7 +805,7 @@ function buildSignalList(sigs, pm, ats){
             <div class="score-verdict">${verdict}</div>
           </div>
           <div class="exp-actions">${actionBtn}<button class="btn-score" onclick="event.stopPropagation()">Score ↑</button></div>
-          <div class="exp-qty">~${qty} shares based on ₹5,000 max risk</div>
+          <div class="exp-qty">${lots} lot${lots>1?'s':''} · ${qty} units · ₹${totalRisk.toLocaleString('en-IN')} max risk</div>
         </div>
       </div>
     </div>`;
