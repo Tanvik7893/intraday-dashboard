@@ -771,7 +771,7 @@ function renderPnlBanner(sigs, pm){
   el.style.display='flex';
   el.style.background=bg;
   el.style.borderColor=bd;
-  el.innerHTML='<div style="font-size:11px;font-weight:700;color:'+color+';letter-spacing:0.04em">Today's P&L (1 lot)</div><div style="font-size:16px;font-weight:800;color:'+color+'">'+(totalPnl>=0?'+':'')+'\u20B9'+Math.abs(totalPnl).toLocaleString('en-IN')+'</div><div style="font-size:10px;color:var(--txt3);margin-top:2px">'+( parts.join(' \u00B7 ')||'—')+'</div>';
+  el.innerHTML='<div style="font-size:11px;font-weight:700;color:'+color+';letter-spacing:0.04em">P&L Today (1 lot)</div><div style="font-size:16px;font-weight:800;color:'+color+'">'+(totalPnl>=0?'+':'')+'\u20B9'+Math.abs(totalPnl).toLocaleString('en-IN')+'</div><div style="font-size:10px;color:var(--txt3);margin-top:2px">'+( parts.join(' \u00B7 ')||'—')+'</div>';
 }
 
 function renderEventTimeline(sigs){
