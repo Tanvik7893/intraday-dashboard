@@ -648,7 +648,7 @@ setGreeting();
 function fmt(n){if(n==null||n===0)return'—';if(Math.abs(n)>9999)return Math.round(n).toLocaleString('en-IN');if(Math.abs(n)>99)return Math.round(n).toString();return(+n).toFixed(2);}
 function fmtP(p){if(p==null)return'—';return(p>=0?'+':'')+p.toFixed(2)+'%';}
 function gc(v){return v>=0?'var(--green)':'var(--red)';}
-function sn(s){return{NIFTY50:'NIFTY 50',BANKNIFTY:'BankNIFTY',HDFCBANK:'HDFC Bank',RELIANCE:'Reliance',ICICIBANK:'ICICI Bank',TCS:'TCS',INFY:'Infosys',KOTAKBANK:'Kotak Bank',AXISBANK:'Axis Bank',LT:'L&T'}[s]||s;}
+function sn(s){return{NIFTY50:'NIFTY 50',BANKNIFTY:'BankNIFTY',HDFCBANK:'HDFC Bank',RELIANCE:'Reliance',ICICIBANK:'ICICI Bank',TCS:'TCS',INFY:'Infosys',KOTAKBANK:'Kotak Bank',AXISBANK:'Axis Bank',LT:'L&T',SBIN:'SBI',TATAMOTORS:'Tata Motors',BHARTIARTL:'Bharti Airtel',ITC:'ITC',HINDUNILVR:'HUL',BAJFINANCE:'Bajaj Finance',MARUTI:'Maruti',TITAN:'Titan',SUNPHARMA:'Sun Pharma',WIPRO:'Wipro',HCLTECH:'HCL Tech',TECHM:'Tech Mahindra'}[s]||s;}
 
 // LOAD DATA
 async function loadData(){
@@ -706,14 +706,14 @@ function getYday(){const d=new Date();d.setDate(d.getDate()-1);if(d.getDay()===0
 
 function buildSignalList(sigs, pm, ats){
   const el=document.getElementById('signals-list');
-  if(!sigs.length){el.innerHTML='<div class="empty">Signals will appear at 9:20 AM after market opens.<br>Dashboard refreshes every 30 seconds.</div>';return;}
+  if(!sigs.length){el.innerHTML='<div class="empty">Signals will appear at 9:30 AM after market opens.<br>Dashboard refreshes every 60 seconds.</div>';return;}
   window._sigs=sigs; // store for index-based onclick — safe, no JSON in attributes
   window._ats=ats;
   el.innerHTML=sigs.map((s,i)=>{
     const cp=pm[s.stock]||s.entry_price||0;
     const at=ats.find(t=>t.stock===s.stock&&t.status==='open');
     const atIdx=at?ats.indexOf(at):-1;
-    const isPrimary=i<2,total=s.score||(Math.min(100,(s.trend_score||18)+(s.vol_score||12)+(s.momo_score||10)+(s.rs_score||12)+10));
+    const isPrimary=i<2,total=s.score||0;
     const rankCls=at?'rk-live':isPrimary?'rk-primary':'rk-backup';
     const tagTxt=at?'LIVE':isPrimary?'PRIMARY':'BACKUP';
     const tagCls=at?'st-live':isPrimary?'st-primary':'st-backup';
@@ -742,16 +742,27 @@ function buildSignalList(sigs, pm, ats){
     const goDesc=isGo?'Price is at/past entry — can trade now':'Wait for 9:30 ORB, price not at entry yet';
     const opts=`Buy ${strike} ${optType} (${optBias}) · ${lots} lot${lots>1?'s':''} (${lots*lotSz} units) · Risk: ₹${totalRisk.toLocaleString('en-IN')} · T1: +₹${t1Profit.toLocaleString('en-IN')}`;
     const qty=Math.round(lots*lotSz);
-    const ts=s.trend_score||18,vs=s.vol_score||12,ms=s.momo_score||10,rs=s.rs_score||12;
-    const verdict=total>=85?'Very high confidence. All signals aligned.':total>=75?'Good setup. Main signals agree.':'Moderate — consider smaller size.';
+    const ts=s.trend_score||0,vs=s.vol_score||0,ms=s.momo_score||0,rs=s.rs_score||0;
+    const hasBreakdown=ts>0||vs>0||ms>0||rs>0;
+    const verdict=total>=85?'Very high confidence. All signals aligned.':total>=75?'Good setup. Main signals agree.':total>=60?'Moderate — consider smaller size.':'Below threshold.';
 
     let liveStrip='';
     if(at){
-      const ep=at.entry_price||s.entry_price,pnlRs=Math.round((cp-ep)*(at.quantity||1)*100)/100,pnlP=Math.round(((cp-ep)/ep)*10000)/100;
-      const sl=s.sl_price||ep*0.98,slPct=Math.min(100,Math.round((1-Math.abs(cp-sl)/Math.abs(ep-sl))*100));
+      const ep=at.entry_price||s.entry_price;
+      const isBear=s.bias==='Bearish'||s.bias==='bearish';
+      const movePts=isBear?(ep-cp):(cp-ep);
+      const lot2=LOT_SZ[s.stock]||1;
+      const slDist2=Math.abs(ep-(s.sl_price||ep));
+      const lots2=slDist2>0?Math.max(1,Math.floor(15000/(slDist2*lot2))):1;
+      const pnlRs=Math.round(movePts*lot2*lots2);
+      const pnlP=ep>0?Math.round((movePts/ep)*10000)/100:0;
+      const sl=s.sl_price||ep*(isBear?1.02:0.98);
+      const distToSL=isBear?(cp-sl):(sl-cp);
+      const totalRange=Math.abs(ep-sl);
+      const slPct=totalRange>0?Math.min(100,Math.max(0,Math.round((1-distToSL/totalRange)*100))):50;
       const slColor=slPct>=80?'var(--red)':slPct>=60?'var(--amber)':'var(--green)';
       liveStrip=`<div class="sig-live-strip">
-        <div class="live-pnl" style="color:${gc(pnlRs)}">${pnlRs>=0?'+':''}₹${pnlRs} (${pnlP>=0?'+':''}${pnlP}%)</div>
+        <div class="live-pnl" style="color:${gc(pnlRs)}">${pnlRs>=0?'+':''}₹${pnlRs.toLocaleString('en-IN')} (${pnlP>=0?'+':''}${pnlP}%)</div>
         <div class="live-bar-wrap">
           <div class="live-bar-lbl"><span>SL ${fmt(sl)}</span><span>${slPct}% to SL</span></div>
           <div class="live-bar-track"><div class="live-bar-fill" style="width:${slPct}%;background:${slColor}"></div></div>
@@ -804,10 +815,11 @@ function buildSignalList(sigs, pm, ats){
           <div class="exp-why"><div class="exp-why-lbl">Why this trade</div><div class="exp-why-val">Score ${total}/100. ${optBias} bias — buy ${strike} ${optType}. SL is ${Math.round(slDist)} pts away (ATR-based). Day move: ${s.day_change_pct>=0?'+':''}${(s.day_change_pct||0).toFixed(2)}%.</div></div>
           <div class="exp-score-toggle" onclick="event.stopPropagation();document.getElementById('sp-${i}').classList.toggle('open')">▸ View score breakdown</div>
           <div class="exp-score-panel" id="sp-${i}">
+            ${hasBreakdown?`
             <div class="score-row"><div class="score-lbl">Trend alignment</div><div class="score-track"><div class="score-fill" style="width:${ts/25*100}%;background:${ts>=18?'var(--green)':ts>=12?'var(--amber)':'var(--red)'}"></div></div><div class="score-val" style="color:${ts>=18?'var(--green)':ts>=12?'var(--amber)':'var(--red)'}">${ts}</div></div>
             <div class="score-row"><div class="score-lbl">Volume strength</div><div class="score-track"><div class="score-fill" style="width:${vs/20*100}%;background:${vs>=14?'var(--green)':vs>=9?'var(--amber)':'var(--red)'}"></div></div><div class="score-val" style="color:${vs>=14?'var(--green)':vs>=9?'var(--amber)':'var(--red)'}">${vs}</div></div>
-            <div class="score-row"><div class="score-lbl">ORB breakout</div><div class="score-track"><div class="score-fill" style="width:100%;background:var(--green)"></div></div><div class="score-val" style="color:var(--green)">10</div></div>
             <div class="score-row"><div class="score-lbl">Relative strength</div><div class="score-track"><div class="score-fill" style="width:${rs/25*100}%;background:${rs>=18?'var(--green)':rs>=12?'var(--amber)':'var(--red)'}"></div></div><div class="score-val" style="color:${rs>=18?'var(--green)':rs>=12?'var(--amber)':'var(--red)'}">${rs}</div></div>
+            `:`<div style="font-size:11px;color:var(--txt3);padding:4px 0">Score: ${total}/100 — indicator agreement based</div>`}
             <div class="score-verdict">${verdict}</div>
           </div>
           <div class="exp-actions">${actionBtn}<button class="btn-score" onclick="event.stopPropagation()">Score ↑</button></div>
@@ -868,11 +880,15 @@ function updateConfirmBtn(){document.getElementById('confirm-btn').disabled=!(+d
 async function confirmEntry(){
   if(!modalSig)return;
   const price=+document.getElementById('modal-price').value;
-  const qty=modalSig.entry_price>0&&modalSig.sl_price>0?Math.max(1,Math.floor(5000/Math.abs(price-modalSig.sl_price))):1;
+  const LOT_M={NIFTY50:75,BANKNIFTY:30,HDFCBANK:550,RELIANCE:250,ICICIBANK:700,SBIN:1500,TATAMOTORS:900,AXISBANK:625,INFY:300,TCS:150,KOTAKBANK:400,BAJFINANCE:125,MARUTI:50,TITAN:375,SUNPHARMA:700,WIPRO:1500,HCLTECH:350,TECHM:500,LT:150,BHARTIARTL:475,ITC:2400,HINDUNILVR:300};
+  const lotSzM=LOT_M[modalSig.stock]||75;
+  const slDistM=modalSig.sl_price>0?Math.abs(price-modalSig.sl_price):price*0.005;
+  const lotsM=slDistM>0?Math.max(1,Math.floor(15000/(slDistM*lotSzM))):1;
+  const qty=lotsM*lotSzM;
   document.getElementById('confirm-btn').textContent='Saving…';document.getElementById('confirm-btn').disabled=true;
   try{
     await fetch(AT_URL,{method:'POST',headers:DBH,body:JSON.stringify({rows:[{trade_date:new Date().toISOString().split('T')[0],stock:modalSig.stock,signal_rank:1,direction:'LONG',entry_price:price,sl_price:modalSig.sl_price||0,target1:modalSig.target1||0,target2:modalSig.target2||0,quantity:qty,trade_type:'equity',entry_time:new Date().toISOString(),status:'open',current_price:price,pnl_rs:0,pnl_pct:0,alert_sl_sent:false,alert_t1_sent:false,checklist_passed:!checkAnswers.some(a=>a==='N'),notes:checkAnswers.map((a,i)=>['ORB:'+a,'VWAP:'+a,'SL:'+a][i]).join(', ')}]})});
-    toast('Saved. WF10 now watching this trade.');
+    toast('Saved. Live monitor is tracking this trade.');
     document.getElementById('modal-bg').classList.remove('open');
     setTimeout(()=>{loadData();goto('active',document.getElementById('nb-active'));},800);
   }catch(e){toast('Error — try again');document.getElementById('confirm-btn').disabled=false;document.getElementById('confirm-btn').textContent='Confirm — start tracking';}
@@ -937,7 +953,7 @@ async function loadTrades(){
 
 // PERF
 async function renderPerf(){
-  const sigs=dashData?[...(dashData.todaySignals||[]),...(dashData.recentSignals||[])]:SAMPLE_SIGS;
+  const sigs=dashData?[...(dashData.todaySignals||[]),...(dashData.recentSignals||[])]:[];
   const res=sigs.filter(s=>s.signal_result&&s.signal_result!=='PENDING');
   const wins=res.filter(s=>s.signal_result==='TARGET_HIT'||s.signal_result==='PARTIAL_WIN');
   const wr=res.length?Math.round(wins.length/res.length*100):0,pnl=res.reduce((a,s)=>a+(s.actual_pnl_pct||0),0);
@@ -965,7 +981,7 @@ async function renderPerf(){
 }
 
 // ─── RESULTS PAGE ─────────────────────────────────────────
-const LOT_SIZES={NIFTY50:75,BANKNIFTY:30,HDFCBANK:550,RELIANCE:250,ICICIBANK:700,TCS:150,INFY:400,KOTAKBANK:400,AXISBANK:1200,LT:150};
+const LOT_SIZES={NIFTY50:75,BANKNIFTY:30,HDFCBANK:550,RELIANCE:250,ICICIBANK:700,TCS:150,INFY:300,KOTAKBANK:400,AXISBANK:625,LT:150,SBIN:1500,TATAMOTORS:900,BHARTIARTL:475,ITC:2400,HINDUNILVR:300,BAJFINANCE:125,MARUTI:50,TITAN:375,SUNPHARMA:700,WIPRO:1500,HCLTECH:350,TECHM:500};
 function getLot(stock){return LOT_SIZES[stock]||100;}
 
 function getStatus(sig,pm,ats){
@@ -993,7 +1009,18 @@ function renderResults(){
   const isEOD=now.getHours()>15||(now.getHours()===15&&now.getMinutes()>=30);
   const today=now.toISOString().split('T')[0];
   const todaySigs=(dashData.todaySignals||[]).filter(s=>s.signal_date===today);
-  const sigs=todaySigs.length?todaySigs:(window._sigs&&window._sigs.length?window._sigs:SAMPLE_SIGS);
+  const sigs=todaySigs.length?todaySigs:(window._sigs&&window._sigs.length?window._sigs:[]);
+  if(!sigs.length){
+    document.getElementById('rs-total').textContent='₹0';
+    document.getElementById('rs-wins').textContent='0';
+    document.getElementById('rs-sls').textContent='0';
+    document.getElementById('rs-wait').textContent='0';
+    document.getElementById('rs-active').textContent='0';
+    document.getElementById('res-table-lbl').textContent='No signals today yet';
+    document.getElementById('res-table-body').innerHTML='<div class="empty" style="padding:20px">Signals appear after 9:30 AM</div>';
+    document.getElementById('eod-section').style.display='none';
+    return;
+  }
   const ats=dashData.activeTrades||[];
   const pm={
     NIFTY50:dashData.nifty?dashData.nifty.price:0,
@@ -1084,7 +1111,7 @@ function renderResults(){
             <div class="eod-lot-item"><div class="eod-lot-lbl">Move</div><div class="eod-lot-val" style="color:${pnlColor}">${pnlPct!==0?(pnlPct>=0?'+':'')+pnlPct+'%':'—'}</div></div>
             <div class="eod-lot-item"><div class="eod-lot-lbl">R:R hit</div><div class="eod-lot-val">${rrAchieved>0?'1:'+rrAchieved:'—'}</div></div>
           </div>
-          <div style="font-size:10px;color:var(--txt3);margin-top:6px;text-align:center">SL ${fmt(r.s.sl_price)} · T1 ${fmt(r.s.target1)} · T2 ${fmt(r.s.target2)} · ${r.lot} shares/lot</div>
+          <div style="font-size:10px;color:var(--txt3);margin-top:6px;text-align:center">SL ${fmt(r.s.sl_price)} · T1 ${fmt(r.s.target1)} · T2 ${fmt(r.s.target2||0)} · ${r.lot} units/lot</div>
         </div>
       </div>`;
     }).join('')+'</div>';
@@ -1098,15 +1125,6 @@ function renderResults(){
 // TOAST
 let toastT;
 function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2600);}
-
-// SAMPLE DATA
-const SAMPLE_SIGS=[
-  {signal_date:new Date().toISOString().split('T')[0],stock:'NIFTY50',score:87,trend_score:25,vol_score:20,momo_score:22,rs_score:10,entry_price:23380,sl_price:23240,target1:23560,target2:23680,day_change_pct:0.82,signal_result:'PENDING',eod_price:0,actual_pnl_pct:0},
-  {signal_date:new Date().toISOString().split('T')[0],stock:'BANKNIFTY',score:84,trend_score:24,vol_score:18,momo_score:20,rs_score:12,entry_price:54520,sl_price:54170,target1:55220,target2:55570,day_change_pct:1.34,signal_result:'PENDING',eod_price:0,actual_pnl_pct:0},
-  {signal_date:new Date().toISOString().split('T')[0],stock:'HDFCBANK',score:81,trend_score:22,vol_score:18,momo_score:20,rs_score:11,entry_price:1920,sl_price:1890,target1:1965,target2:1990,day_change_pct:0.71,signal_result:'PENDING',eod_price:0,actual_pnl_pct:0},
-];
-const SAMPLE_YDAY=[{stock:'NIFTY50',signal_result:'TARGET_HIT',actual_pnl_pct:0.81},{stock:'BANKNIFTY',signal_result:'TARGET_HIT',actual_pnl_pct:1.43},{stock:'HDFCBANK',signal_result:'SL_HIT',actual_pnl_pct:-0.52}];
-const SAMPLE_TRADES=[{stock:'BANKNIFTY',setup_type:'ORB',direction:'LONG',entry_price:51900,exit_price:52640,result:'WIN',pnl_percent:1.43,trade_date:'2026-06-05'},{stock:'NIFTY50',setup_type:'EMA',direction:'LONG',entry_price:24390,exit_price:24260,result:'LOSS',pnl_percent:-0.53,trade_date:'2026-06-03'},{stock:'HDFCBANK',setup_type:'RS',direction:'LONG',entry_price:1900,exit_price:1942,result:'WIN',pnl_percent:2.21,trade_date:'2026-06-02'}];
 
 // INIT
 loadData();
