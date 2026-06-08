@@ -729,40 +729,49 @@ function getYday(){const d=new Date();d.setDate(d.getDate()-1);if(d.getDay()===0
 
 function renderPnlBanner(sigs, pm){
   const el=document.getElementById('pnl-banner');
-  if(!el||!sigs||!sigs.length){if(el)el.style.display='none';return;}
+  if(!el){return;}
+  if(!sigs||!sigs.length){el.style.display='none';return;}
   const LOT_SZ={NIFTY50:75,BANKNIFTY:30,HDFCBANK:550,RELIANCE:250,ICICIBANK:700,SBIN:1500,TATAMOTORS:900,AXISBANK:625,INFY:300,TCS:150,KOTAKBANK:400,BAJFINANCE:125,MARUTI:50,TITAN:375,SUNPHARMA:700,WIPRO:1500,HCLTECH:350,TECHM:500,LT:150,BHARTIARTL:475,ITC:2400,HINDUNILVR:300};
-  let totalPnl=0,wins=0,losses=0,open=0;
+  let totalPnl=0,wins=0,losses=0,inTrade=0,hasFinal=false;
+  const ats=dashData&&dashData.activeTrades?dashData.activeTrades:[];
   sigs.forEach(s=>{
     const lot=LOT_SZ[s.stock]||75;
-    const isBear=s.bias==='Bearish';
+    const isBear=s.bias==='Bearish'||s.bias==='bearish';
     const result=s.signal_result||'PENDING';
     if(result==='TARGET_HIT'){
-      const t1Pts=Math.abs((s.target1||0)-(s.entry_price||0));
-      totalPnl+=Math.round(t1Pts*lot); wins++;
+      const pts=Math.abs((s.target1||0)-(s.entry_price||0));
+      totalPnl+=Math.round(pts*lot); wins++; hasFinal=true;
     } else if(result==='SL_HIT'){
-      const slPts=Math.abs((s.entry_price||0)-(s.sl_price||0));
-      totalPnl-=Math.round(slPts*lot); losses++;
-    } else if(result==='PENDING'||result===''){
-      // live running P&L for open picks
-      const livePrice=pm[s.stock]||0;
-      if(livePrice>0&&s.entry_price>0){
-        const movePts=isBear?(s.entry_price-livePrice):(livePrice-s.entry_price);
-        totalPnl+=Math.round(movePts*lot);
-        open++;
+      const pts=Math.abs((s.entry_price||0)-(s.sl_price||0));
+      totalPnl-=Math.round(pts*lot); losses++; hasFinal=true;
+    } else {
+      // Only count if actually entered (entry_triggered=true OR active trade exists)
+      const at=ats.find(t=>t.stock===s.stock&&t.status==='open');
+      const isEntered=s.entry_triggered||!!at;
+      if(isEntered){
+        const livePrice=pm[s.stock]||0;
+        const ep=at?at.entry_price:s.entry_price;
+        if(livePrice>0&&ep>0){
+          const movePts=isBear?(ep-livePrice):(livePrice-ep);
+          totalPnl+=Math.round(movePts*lot);
+          inTrade++;
+        }
       }
     }
   });
+  // If no trades entered and no final results — hide banner
+  if(!hasFinal&&wins===0&&losses===0&&inTrade===0){el.style.display='none';return;}
   const color=totalPnl>=0?'var(--green)':'var(--red)';
   const bg=totalPnl>=0?'var(--green-bg)':'var(--red-bg)';
   const bd=totalPnl>=0?'var(--green-bd)':'var(--red-bd)';
   let parts=[];
-  if(wins>0)parts.push(`${wins} win${wins>1?'s':''}`);
-  if(losses>0)parts.push(`${losses} SL`);
-  if(open>0)parts.push(`${open} open`);
+  if(wins>0)parts.push(wins+' target'+(wins>1?'s':'')+' hit');
+  if(losses>0)parts.push(losses+' SL hit');
+  if(inTrade>0)parts.push(inTrade+' live');
   el.style.display='flex';
   el.style.background=bg;
   el.style.borderColor=bd;
-  el.innerHTML=`<div style="font-size:11px;font-weight:700;color:${color};letter-spacing:0.04em">Today's P&L (1 lot)</div><div style="font-size:16px;font-weight:800;color:${color}">${totalPnl>=0?'+':''}₹${Math.abs(totalPnl).toLocaleString('en-IN')}</div><div style="font-size:10px;color:var(--txt3);margin-top:2px">${parts.join(' · ')||'signals pending'}</div>`;
+  el.innerHTML='<div style="font-size:11px;font-weight:700;color:'+color+';letter-spacing:0.04em">Today's P&L (1 lot)</div><div style="font-size:16px;font-weight:800;color:'+color+'">'+(totalPnl>=0?'+':'')+'\u20B9'+Math.abs(totalPnl).toLocaleString('en-IN')+'</div><div style="font-size:10px;color:var(--txt3);margin-top:2px">'+( parts.join(' \u00B7 ')||'—')+'</div>';
 }
 
 function renderEventTimeline(sigs){
@@ -1121,6 +1130,8 @@ function getStatus(sig,pm,ats){
   const closed=ats.find(t=>t.stock===sig.stock&&t.status==='closed');
   if(at) return 'IN_TRADE';
   if(closed) return 'CLOSED';
+  // entry_triggered=true means live monitor detected price crossed entry
+  if(sig.entry_triggered) return 'IN_TRADE';
   return 'WAITING';
 }
 
@@ -1137,10 +1148,20 @@ function renderResults(){
   const now=new Date();
   const isEOD=now.getHours()>15||(now.getHours()===15&&now.getMinutes()>=30);
   const today=now.toISOString().split('T')[0];
-  const todaySigs=(dashData.todaySignals||[]).filter(s=>s.signal_date===today);
+
+  // Latest-batch dedup — same as renderToday
+  const allTodayRaw=(dashData.todaySignals||[]).filter(s=>s.signal_date===today&&s.signal_result!=='STALE'&&s.score>0);
+  let todaySigs=allTodayRaw;
+  if(allTodayRaw.length>0){
+    const buckets={};
+    allTodayRaw.forEach(s=>{const b=s.createdAt?s.createdAt.substr(0,16):'x';if(!buckets[b])buckets[b]=[];buckets[b].push(s);});
+    const latestB=Object.keys(buckets).sort().pop();
+    todaySigs=buckets[latestB]||allTodayRaw;
+  }
   const sigs=todaySigs.length?todaySigs:(window._sigs&&window._sigs.length?window._sigs:[]);
+
   if(!sigs.length){
-    document.getElementById('rs-total').textContent='₹0';
+    document.getElementById('rs-total').textContent='\u20B90';
     document.getElementById('rs-wins').textContent='0';
     document.getElementById('rs-sls').textContent='0';
     document.getElementById('rs-wait').textContent='0';
@@ -1150,6 +1171,7 @@ function renderResults(){
     document.getElementById('eod-section').style.display='none';
     return;
   }
+
   const ats=dashData.activeTrades||[];
   const pm={
     NIFTY50:dashData.nifty?dashData.nifty.price:0,
@@ -1160,92 +1182,156 @@ function renderResults(){
     SBIN:dashData.sbin?dashData.sbin.price:0,
     AXISBANK:dashData.axisbank?dashData.axisbank.price:0,
     INFY:dashData.infy?dashData.infy.price:0,
-    TCS:dashData.tcs?dashData.tcs.price:0
+    TCS:dashData.tcs?dashData.tcs.price:0,
+    HINDUNILVR:dashData.sbin?dashData.sbin.price:0 // fallback
   };
 
   let totalPnl=0,wins=0,sls=0,waiting=0,activeCount=0;
 
   const rows=sigs.map((s,i)=>{
     const lot=getLot(s.stock);
-    const status=getStatus(s,pm,ats);
-    const at=ats.find(t=>t.stock===s.stock);
-    const cp=pm[s.stock]||(at?at.current_price:0)||s.eod_price||0;
-    const isPrimary=i<2;
-    const rankCls=isPrimary?'rk-primary':'rk-backup';
+    const at=ats.find(t=>t.stock===s.stock&&t.status==='open');
+    const closed=ats.find(t=>t.stock===s.stock&&t.status==='closed');
+    const result=s.signal_result||'PENDING';
+    const livePrice=pm[s.stock]||0;
+    const entryP=at?at.entry_price:s.entry_price;
+    const isBear=s.bias==='Bearish'||s.bias==='bearish';
 
-    let pnl=0,exitP=0;
-    if(status==='TARGET_HIT'){exitP=s.target1;wins++;}
-    else if(status==='PARTIAL_WIN'){exitP=Math.round((s.target1+s.entry_price)/2*100)/100;wins++;}
-    else if(status==='SL_HIT'){exitP=s.sl_price;sls++;}
+    // Determine status — most precise first
+    let status='WAITING';
+    if(result==='TARGET_HIT') status='TARGET_HIT';
+    else if(result==='SL_HIT') status='SL_HIT';
+    else if(result==='PARTIAL_WIN') status='PARTIAL_WIN';
+    else if(at) status='IN_TRADE';
+    else if(closed) status='CLOSED';
+    else if(s.entry_triggered) status='IN_TRADE';
+
+    // Entry triggered but not manually logged
+    const autoTriggered=s.entry_triggered&&!at&&status!=='TARGET_HIT'&&status!=='SL_HIT';
+
+    let pnl=0,exitP=0,cp=livePrice||s.eod_price||0;
+    if(status==='TARGET_HIT'){exitP=s.target1||s.eod_price;wins++;}
+    else if(status==='PARTIAL_WIN'){exitP=Math.round(((s.target1||0)+(s.entry_price||0))/2);wins++;}
+    else if(status==='SL_HIT'){exitP=s.sl_price||s.eod_price;sls++;}
     else if(status==='IN_TRADE'||status==='CLOSED'){exitP=cp;activeCount++;}
     else{waiting++;}
-    pnl=exitP?calcPnL(s.entry_price,exitP,lot,s.bias):0;
+    pnl=exitP?calcPnL(entryP,exitP,lot,s.bias):0;
     totalPnl+=pnl;
 
-    const movePct=s.entry_price&&cp?Math.round(((cp-s.entry_price)/s.entry_price)*(s.bias==='Bearish'?-10000:10000))/100:0;
+    const movePts=entryP&&cp?Math.round((isBear?(entryP-cp):(cp-entryP))*10)/10:0;
     const pnlColor=pnl>0?'var(--green)':pnl<0?'var(--red)':'var(--txt3)';
-    const moveColor=movePct>0?'var(--green)':movePct<0?'var(--red)':'var(--txt3)';
-    const statusMap={TARGET_HIT:{l:'Target hit',c:'rb-hit'},SL_HIT:{l:'SL hit',c:'rb-sl'},PARTIAL_WIN:{l:'Partial',c:'rb-partial'},IN_TRADE:{l:'In trade',c:'rb-active'},CLOSED:{l:'Exited',c:'rb-active'},WAITING:{l:'Waiting',c:'rb-wait'}};
+    const moveColor=movePts>0?'var(--green)':movePts<0?'var(--red)':'var(--txt3)';
+    const showPnl=(exitP>0&&pnl!==0);
+
+    // Status display
+    const statusMap={
+      TARGET_HIT:{l:'Target hit \u2705',c:'rb-hit'},
+      SL_HIT:{l:'SL hit \u274C',c:'rb-sl'},
+      PARTIAL_WIN:{l:'Partial \u26A0\uFE0F',c:'rb-partial'},
+      IN_TRADE:{l:'In trade \uD83D\uDFE1',c:'rb-active'},
+      CLOSED:{l:'Exited',c:'rb-active'},
+      WAITING:{l:'Waiting',c:'rb-wait'}
+    };
     const sm=statusMap[status]||statusMap.WAITING;
-    const showPnl=exitP>0&&pnl!==0;
-    return {s,i,lot,status,cp,movePct,pnl,exitP,pnlColor,moveColor,sm,rankCls,isPrimary,showPnl};
+
+    // For entry-triggered auto signals: show what happened
+    let autoNote='';
+    if(autoTriggered){
+      autoNote='<div style="font-size:10px;color:var(--amber);font-weight:600;margin-top:4px">\u26A1 Auto-detected entry at '+fmt(s.entry_price)+'</div>';
+    }
+
+    return {s,i,lot,status,cp,movePts,pnl,exitP,entryP,pnlColor,moveColor,sm,showPnl,autoNote,isBear,at,autoTriggered};
   });
 
   totalPnl=Math.round(totalPnl);
   const pnlEl=document.getElementById('rs-total');
-  pnlEl.textContent=(totalPnl>=0?'+':'')+'₹'+Math.abs(totalPnl).toLocaleString('en-IN');
+  pnlEl.textContent=(totalPnl>=0?'+':'')+'\u20B9'+Math.abs(totalPnl).toLocaleString('en-IN');
   pnlEl.style.color=totalPnl>=0?'var(--green)':'var(--red)';
   document.getElementById('rs-wins').textContent=wins;
   document.getElementById('rs-sls').textContent=sls;
   document.getElementById('rs-wait').textContent=waiting;
   document.getElementById('rs-active').textContent=activeCount;
-  document.getElementById('res-table-lbl').textContent=isEOD?'Final results':'Live status — '+now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+  document.getElementById('res-table-lbl').textContent=isEOD?'Final results':'Live status \u2014 '+now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
 
-  // Table rows
+  // Main status table
   document.getElementById('res-table-body').innerHTML=rows.map(r=>`<div class="res-row">
-    <div class="rt-name-cell"><div class="rt-rank ${r.rankCls}">${r.i+1}</div><div class="rt-stock">${sn(r.s.stock)}</div></div>
-    <div class="rt-val">${fmt(r.s.entry_price)}</div>
+    <div class="rt-name-cell"><div class="rt-rank ${r.i<2?'rk-primary':'rk-backup'}">${r.i+1}</div><div class="rt-stock">${sn(r.s.stock)}</div></div>
+    <div class="rt-val">${fmt(r.entryP)}</div>
     <div class="rt-curr-val" style="color:${r.moveColor}">${r.cp?fmt(r.cp):'—'}</div>
-    <div class="rt-move-val" style="color:${r.moveColor}">${r.cp&&r.s.entry_price?(r.movePct>=0?'+':'')+r.movePct+'%':'—'}</div>
-    <div class="rt-pnl-val" style="color:${r.showPnl?r.pnlColor:'var(--txt3)'}">${r.showPnl?(r.pnl>=0?'+':'')+'₹'+Math.abs(r.pnl).toLocaleString('en-IN'):'—'}</div>
+    <div class="rt-move-val" style="color:${r.moveColor}">${r.cp&&r.entryP?(r.movePts>=0?'+':'')+r.movePts+' pts':'—'}</div>
+    <div class="rt-pnl-val" style="color:${r.showPnl?r.pnlColor:'var(--txt3)'}">${r.showPnl?(r.pnl>=0?'+':'')+'\u20B9'+Math.abs(r.pnl).toLocaleString('en-IN'):'—'}</div>
     <div><div class="rt-badge ${r.sm.c}">${r.sm.l}</div></div>
   </div>`).join('');
 
-  // EOD section
+  // EOD / event breakdown per pick
   const hasResults=sigs.some(s=>s.signal_result&&s.signal_result!=='PENDING');
   const eodSec=document.getElementById('eod-section');
-  if(isEOD||hasResults){
+  if(isEOD||hasResults||activeCount>0){
     eodSec.style.display='block';
     document.getElementById('eod-cards').innerHTML='<div class="eod-cards-wrap">'+rows.map(r=>{
       const pnlColor=r.pnl>=0?'var(--green)':'var(--red)';
-      const riskPerLot=r.s.entry_price&&r.s.sl_price?Math.abs(r.s.entry_price-r.s.sl_price)*r.lot:0;
+      const riskPerLot=r.entryP&&r.s.sl_price?Math.abs(r.entryP-r.s.sl_price)*r.lot:0;
       const rrAchieved=riskPerLot&&r.pnl?Math.round((Math.abs(r.pnl)/riskPerLot)*10)/10:0;
-      const pnlPct=r.s.entry_price&&r.exitP?Math.round(((r.exitP-r.s.entry_price)/r.s.entry_price)*(r.s.bias==='Bearish'?-10000:10000))/100:0;
-      const exitLabel=r.status==='TARGET_HIT'?'Target 1':r.status==='SL_HIT'?'SL hit':r.status==='PARTIAL_WIN'?'Partial exit':r.status==='CLOSED'?'Your exit':'EOD / Live';
+      const pnlPct=r.entryP&&r.exitP?Math.round(((r.exitP-r.entryP)/r.entryP)*(r.isBear?-10000:10000))/100:0;
+
+      // Determine the exit label and color
+      let exitLabel,exitColor,exitIcon;
+      if(r.status==='TARGET_HIT'){exitLabel='Target 1 hit \u2705';exitColor='var(--green)';exitIcon='\u2705';}
+      else if(r.status==='SL_HIT'){exitLabel='Stop loss hit \u274C';exitColor='var(--red)';exitIcon='\u274C';}
+      else if(r.status==='PARTIAL_WIN'){exitLabel='Partial exit';exitColor='var(--amber)';exitIcon='\u26A0\uFE0F';}
+      else if(r.status==='CLOSED'){exitLabel='Your exit';exitColor='var(--txt2)';exitIcon='→';}
+      else if(r.status==='IN_TRADE'){exitLabel='In trade now';exitColor='var(--amber)';exitIcon='\uD83D\uDFE1';}
+      else{exitLabel='Waiting';exitColor='var(--txt3)';exitIcon='—';}
+
       const resultBadge=r.pnl>0?'b-hit':r.pnl<0?'b-sl':'b-pend';
-      const resultTxt=r.pnl>0?'WIN':r.pnl<0?'LOSS':'—';
+      const resultTxt=r.status==='TARGET_HIT'?'TARGET HIT':r.status==='SL_HIT'?'SL HIT':r.status==='IN_TRADE'?'IN TRADE':r.status==='CLOSED'?'EXITED':r.pnl>0?'WIN':r.pnl<0?'LOSS':'WAITING';
+
+      // Auto-trigger strip — show if entry_triggered
+      const autoStrip=r.s.entry_triggered?`<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:11px;color:var(--amber)"><strong>\u26A1 Auto-detected:</strong> Price crossed entry ${fmt(r.entryP)} — live monitor triggered</div>`:'';
+
+      // T1 / SL progress
+      const isBullish=!r.isBear;
+      const t1Pts=Math.abs((r.s.target1||0)-r.entryP);
+      const slPts=Math.abs(r.entryP-(r.s.sl_price||0));
+      const currMovePts=r.cp&&r.entryP?Math.round((r.isBear?(r.entryP-r.cp):(r.cp-r.entryP))*10)/10:0;
+      const pctToT1=t1Pts>0?Math.min(100,Math.max(0,Math.round((currMovePts/t1Pts)*100))):0;
+      const progressColor=currMovePts>=0?'var(--green)':'var(--red)';
+
+      const progressBar=r.status==='IN_TRADE'?`<div style="margin-top:8px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);margin-bottom:3px">
+          <span>SL ${fmt(r.s.sl_price)}</span>
+          <span style="color:${progressColor}">${pctToT1}% to T1</span>
+          <span>T1 ${fmt(r.s.target1)}</span>
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px">
+          <div style="height:4px;width:${pctToT1}%;background:${progressColor};border-radius:2px;transition:width 1s"></div>
+        </div>
+      </div>`:'';
+
       return`<div class="eod-card">
         <div class="eod-card-head">
-          <div class="eod-card-name">${r.i+1}. ${sn(r.s.stock)} <span style="font-size:10px;font-weight:400;color:var(--txt3)">${r.isPrimary?'Primary':'Backup'} · ${r.lot} shares</span></div>
+          <div class="eod-card-name">${r.i+1}. ${sn(r.s.stock)} <span style="font-size:10px;font-weight:400;color:var(--txt3)">${r.i<2?'Primary':'Backup'} \u00B7 ${r.lot} units</span></div>
           <div class="yd-badge ${resultBadge}">${resultTxt}</div>
         </div>
         <div class="eod-card-body">
+          ${autoStrip}
           <div class="eod-price-flow">
-            <div class="epf-item"><div class="epf-lbl">Entry</div><div class="epf-val">${fmt(r.s.entry_price)}</div></div>
-            <div class="epf-arrow">→</div>
-            <div class="epf-item"><div class="epf-lbl">${exitLabel}</div><div class="epf-val" style="color:${pnlColor}">${fmt(r.exitP||r.cp)}</div></div>
+            <div class="epf-item"><div class="epf-lbl">Entry</div><div class="epf-val">${fmt(r.entryP)}</div></div>
+            <div class="epf-arrow">${exitIcon}</div>
+            <div class="epf-item"><div class="epf-lbl">${exitLabel}</div><div class="epf-val" style="color:${exitColor}">${r.exitP?fmt(r.exitP):(r.cp?fmt(r.cp):'—')}</div></div>
           </div>
+          ${progressBar}
           <div class="eod-lot-row">
-            <div class="eod-lot-item"><div class="eod-lot-lbl">P&L (₹)</div><div class="eod-lot-val" style="color:${pnlColor}">${r.pnl!==0?(r.pnl>=0?'+':'')+'₹'+Math.abs(r.pnl).toLocaleString('en-IN'):'—'}</div></div>
-            <div class="eod-lot-item"><div class="eod-lot-lbl">Move</div><div class="eod-lot-val" style="color:${pnlColor}">${pnlPct!==0?(pnlPct>=0?'+':'')+pnlPct+'%':'—'}</div></div>
-            <div class="eod-lot-item"><div class="eod-lot-lbl">R:R hit</div><div class="eod-lot-val">${rrAchieved>0?'1:'+rrAchieved:'—'}</div></div>
+            <div class="eod-lot-item"><div class="eod-lot-lbl">P&L (Rs)</div><div class="eod-lot-val" style="color:${r.pnl!==0?pnlColor:'var(--txt3)'}">${r.pnl!==0?(r.pnl>=0?'+':'')+'\u20B9'+Math.abs(r.pnl).toLocaleString('en-IN'):'—'}</div></div>
+            <div class="eod-lot-item"><div class="eod-lot-lbl">Move</div><div class="eod-lot-val" style="color:${r.pnl!==0?pnlColor:'var(--txt3)'}">${pnlPct!==0?(pnlPct>=0?'+':'')+pnlPct+'%':'—'}</div></div>
+            <div class="eod-lot-item"><div class="eod-lot-lbl">R:R</div><div class="eod-lot-val">${rrAchieved>0?'1:'+rrAchieved:'—'}</div></div>
           </div>
-          <div style="font-size:10px;color:var(--txt3);margin-top:6px;text-align:center">SL ${fmt(r.s.sl_price)} · T1 ${fmt(r.s.target1)} · T2 ${fmt(r.s.target2||0)} · ${r.lot} units/lot</div>
+          <div style="font-size:10px;color:var(--txt3);margin-top:6px;text-align:center">SL ${fmt(r.s.sl_price)} \u00B7 T1 ${fmt(r.s.target1)} \u00B7 T2 ${fmt(r.s.target2||0)} \u00B7 ${r.s.bias}</div>
         </div>
       </div>`;
     }).join('')+'</div>';
     const maxPossible=sigs.reduce((a,s)=>{const l=getLot(s.stock);return a+calcPnL(s.entry_price,s.target1,l,s.bias);},0);
-    document.getElementById('eod-note').textContent='P&L figures are theoretical — based on 1 standard lot at the suggested entry price. Max possible if all targets hit: +₹'+Math.round(maxPossible).toLocaleString('en-IN')+'. Actual results depend on your real entry prices.';
+    document.getElementById('eod-note').textContent='All P&L calculated on 1 standard lot. Max if all T1 hit: +\u20B9'+Math.round(maxPossible).toLocaleString('en-IN')+'. Actual depends on your real entry price.';
   } else {
     eodSec.style.display='none';
   }
