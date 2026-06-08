@@ -438,7 +438,10 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Inter',
     </div>
   </div>
   <div id="cap-wrap" class="cap-banner" style="display:none"><span class="cap-lbl">Capital in market today</span><span id="cap-val" class="cap-val cap-safe">₹0</span></div>
-  <div class="sec-label">Today's 5 picks</div>
+  <div class="sec-label" style="display:flex;justify-content:space-between;align-items:center;padding-right:16px;">
+    <span>Today's 5 picks</span>
+    <span id="last-update" style="font-size:10px;color:var(--txt3);font-weight:400;">—</span>
+  </div>
   <div id="signals-list" class="signals-list"></div>
   <div id="skip-wrap" style="display:none" class="skip-card"><div class="skip-lbl">Below threshold</div><div id="skip-items"></div></div>
   <div class="sec-label">Yesterday</div>
@@ -632,7 +635,7 @@ function goto(id,btn){
 
 // CLOCK + GREETING
 function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});}
-tick();setInterval(tick,30000);
+tick();setInterval(tick,1000);
 function setGreeting(){
   const n=new Date(),h=n.getHours();
   document.getElementById('greet-name').textContent=(h<12?'Good morning':h<17?'Good afternoon':'Good evening')+', Kartik.';
@@ -655,6 +658,9 @@ async function loadData(){
     const d=await r.json();
     if(!d.ok)throw new Error('Proxy error');
     dashData=d;
+    // Update last-update timestamp
+    const lu=document.getElementById('last-update');
+    if(lu){const n=new Date();lu.textContent='Updated '+n.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});}
     renderToday(d);
     if(document.getElementById('page-results').classList.contains('active'))renderResults();
   }catch(e){
@@ -1104,7 +1110,7 @@ const SAMPLE_TRADES=[{stock:'BANKNIFTY',setup_type:'ORB',direction:'LONG',entry_
 
 // INIT
 loadData();
-setInterval(loadData,30000);
+setInterval(loadData,60000);
 </script>
 </body>
 </html>
