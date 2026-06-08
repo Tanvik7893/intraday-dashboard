@@ -358,6 +358,66 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Inter',
   .res-thead{grid-template-columns:120px 72px 72px 60px 90px 80px;}
   .res-row{grid-template-columns:120px 72px 72px 60px 90px 80px;}
 }
+
+/* ─── HYPOTHETICAL P&L TRACKER ─── */
+.hyp-tracker-wrap{margin:8px 12px 0;}
+.hyp-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px 10px 0 0;border-bottom:none;}
+.hyp-header-left{display:flex;align-items:center;gap:8px;}
+.hyp-title{font-size:12px;font-weight:700;color:var(--txt);letter-spacing:0.02em;}
+.hyp-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd);letter-spacing:0.06em;text-transform:uppercase;}
+.hyp-subtitle{font-size:10px;color:var(--txt3);}
+.hyp-eod-notice{margin:0 12px 0;padding:8px 12px;background:#fff8e7;border:1px solid #f0cc88;border-top:none;border-bottom:none;font-size:11px;color:#9a5c00;display:none;align-items:center;gap:6px;}
+.hyp-eod-notice.show{display:flex;}
+/* Each pick row */
+.hyp-pick{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--border2);transition:border-left-color .2s;}
+.hyp-pick:last-child{border-radius:0 0 10px 10px;}
+.hyp-pick.status-waiting{border-left-color:var(--border2);}
+.hyp-pick.status-entered{border-left-color:var(--blue);}
+.hyp-pick.status-target{border-left-color:var(--green);}
+.hyp-pick.status-sl{border-left-color:var(--red);}
+.hyp-pick.status-eod{border-left-color:#8b5cf6;}
+.hyp-pick-main{padding:11px 13px;display:flex;align-items:center;gap:10px;}
+.hyp-num{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;background:var(--bg);color:var(--txt3);}
+.hyp-pick.status-target .hyp-num{background:var(--green-bg);color:var(--green);}
+.hyp-pick.status-sl .hyp-num{background:var(--red-bg);color:var(--red);}
+.hyp-pick.status-entered .hyp-num{background:var(--blue-bg);color:var(--blue);}
+.hyp-pick.status-eod .hyp-num{background:#ede9fe;color:#8b5cf6;}
+.hyp-info{flex:1;min-width:0;}
+.hyp-name{font-size:13px;font-weight:700;color:var(--txt);}
+.hyp-levels{font-size:10px;color:var(--txt3);margin-top:2px;}
+.hyp-levels .hyp-entry-lbl{color:var(--txt2);font-weight:600;}
+.hyp-status-block{text-align:right;flex-shrink:0;min-width:100px;}
+.hyp-status-pill{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;}
+.sp-waiting{background:var(--bg);color:var(--txt3);border:1px solid var(--border2);}
+.sp-entered{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd);}
+.sp-target{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);}
+.sp-sl{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);}
+.sp-eod{background:#ede9fe;color:#8b5cf6;border:1px solid #c4b5fd;}
+.hyp-pnl-val{font-size:16px;font-weight:800;line-height:1;letter-spacing:-0.3px;}
+.hyp-pnl-sub{font-size:10px;color:var(--txt3);margin-top:2px;}
+/* Live P&L bar shown when ENTERED */
+.hyp-live-bar{padding:0 13px 10px;display:none;}
+.hyp-pick.status-entered .hyp-live-bar{display:block;}
+.hlb-track{height:5px;background:var(--bg);border-radius:3px;overflow:visible;position:relative;margin:0 4px;}
+.hlb-fill{height:5px;border-radius:3px;transition:width .8s ease;}
+.hlb-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--txt3);margin-top:3px;}
+/* Final P&L strip for TARGET/SL */
+.hyp-result-strip{display:none;padding:8px 13px;border-top:1px solid var(--border);}
+.hyp-pick.status-target .hyp-result-strip,.hyp-pick.status-sl .hyp-result-strip,.hyp-pick.status-eod .hyp-result-strip{display:flex;align-items:center;justify-content:space-between;}
+.hrs-left{font-size:11px;font-weight:600;}
+.hrs-right{font-size:11px;color:var(--txt3);}
+/* Summary footer */
+.hyp-footer{margin:6px 12px 0;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;}
+.hyp-footer-pnl{font-size:18px;font-weight:800;letter-spacing:-0.3px;}
+.hyp-footer-meta{font-size:10px;color:var(--txt3);margin-top:2px;}
+.hyp-footer-right{text-align:right;}
+.hyp-footer-label{font-size:9px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;}
+.hyp-maxpotential{font-size:12px;font-weight:700;color:var(--green);}
+/* 3:30 PM exit badge */
+.eod-exit-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;background:#ede9fe;color:#8b5cf6;border:1px solid #c4b5fd;}
+@media(min-width:768px){
+  .hyp-tracker-wrap,.hyp-footer,.hyp-eod-notice{margin-left:16px;margin-right:16px;}
+}
 </style>
 </head>
 <body>
@@ -536,15 +596,52 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Inter',
       <div class="rs-mini"><div id="rs-active" class="rs-mini-val" style="color:var(--blue)">—</div><div class="rs-mini-lbl">In trade</div></div>
     </div>
   </div>
+
+  <!-- ── HYPOTHETICAL P&L TRACKER ── -->
+  <div class="sec-label" style="display:flex;align-items:center;justify-content:space-between;padding-right:16px;">
+    <span>Hypothetical P&amp;L tracker</span>
+    <span style="font-size:9px;font-weight:600;color:var(--txt3);letter-spacing:0.06em;text-transform:uppercase" id="hyp-refresh-lbl">Auto · 60s</span>
+  </div>
+  <!-- 3:30 PM notice banner -->
+  <div class="hyp-eod-notice" id="hyp-eod-notice">
+    <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <span>Market closed — all open trades auto-exited at 3:30 PM. P&amp;L calculated at last known price.</span>
+  </div>
+  <!-- Tracker rows (built by JS) -->
+  <div class="hyp-tracker-wrap" id="hyp-tracker-wrap">
+    <div class="hyp-header">
+      <div class="hyp-header-left">
+        <div class="hyp-title">5 Morning Picks</div>
+        <div class="hyp-badge">Hypothetical</div>
+      </div>
+      <div class="hyp-subtitle" id="hyp-header-time">9:30 AM picks — fixed for day</div>
+    </div>
+    <div id="hyp-picks-body">
+      <div class="empty" style="padding:28px 16px;background:var(--card);border:1px solid var(--border);border-radius:0 0 10px 10px">Signals will appear at 9:30 AM</div>
+    </div>
+  </div>
+  <!-- Footer summary -->
+  <div class="hyp-footer" id="hyp-footer" style="display:none">
+    <div>
+      <div class="hyp-footer-label">Hypothetical total</div>
+      <div id="hyp-footer-pnl" class="hyp-footer-pnl">₹0</div>
+      <div id="hyp-footer-meta" class="hyp-footer-meta">—</div>
+    </div>
+    <div class="hyp-footer-right">
+      <div class="hyp-footer-label">Max possible (all T1)</div>
+      <div id="hyp-max-pnl" class="hyp-maxpotential">—</div>
+    </div>
+  </div>
+
   <!-- Status table — live during market hours -->
-  <div class="sec-label" id="res-table-lbl">Live status</div>
+  <div class="sec-label" id="res-table-lbl" style="margin-top:10px">Live status</div>
   <div class="res-table-wrap">
     <div class="res-thead">
       <div class="rt-h rt-name">Pick</div>
       <div class="rt-h rt-entry">Entry</div>
       <div class="rt-h rt-curr">Now</div>
       <div class="rt-h rt-move">Move</div>
-      <div class="rt-h rt-pnl">P&L (1 lot)</div>
+      <div class="rt-h rt-pnl">P&amp;L (1 lot)</div>
       <div class="rt-h rt-status">Status</div>
     </div>
     <div id="res-table-body"></div>
@@ -1126,21 +1223,173 @@ function getStatus(sig,pm,ats){
   if(sig.signal_result==='TARGET_HIT') return 'TARGET_HIT';
   if(sig.signal_result==='SL_HIT') return 'SL_HIT';
   if(sig.signal_result==='PARTIAL_WIN') return 'PARTIAL_WIN';
+  if(sig.signal_result==='EXITED_EOD') return 'EXITED_EOD';
   const at=ats.find(t=>t.stock===sig.stock&&t.status==='open');
   const closed=ats.find(t=>t.stock===sig.stock&&t.status==='closed');
   if(at) return 'IN_TRADE';
   if(closed) return 'CLOSED';
-  // entry_triggered=true means live monitor detected price crossed entry
   if(sig.entry_triggered) return 'IN_TRADE';
   return 'WAITING';
 }
 
 function calcPnL(entryPrice,exitPrice,lot,bias){
   if(!entryPrice||!exitPrice) return 0;
-  // Bearish (PE): profit when price falls — entry minus exit
-  // Bullish (CE): profit when price rises — exit minus entry
   const dir=(bias==='Bearish'||bias==='bearish')?-1:1;
   return Math.round((exitPrice-entryPrice)*lot*dir*100)/100;
+}
+
+// ── HYPOTHETICAL TRACKER renderer ──────────────────────────
+function renderHypTracker(sigs, pm, isEOD){
+  const body=document.getElementById('hyp-picks-body');
+  const footer=document.getElementById('hyp-footer');
+  const eodNotice=document.getElementById('hyp-eod-notice');
+  const headerTime=document.getElementById('hyp-header-time');
+  if(!sigs||!sigs.length){
+    body.innerHTML='<div class="empty" style="padding:28px 16px;background:var(--card);border:1px solid var(--border);border-radius:0 0 10px 10px">Signals will appear at 9:30 AM</div>';
+    footer.style.display='none';
+    eodNotice.classList.remove('show');
+    return;
+  }
+
+  // Show 3:30 PM notice
+  if(isEOD) eodNotice.classList.add('show');
+  else eodNotice.classList.remove('show');
+
+  // Update header time
+  const firstCreated=sigs[0]&&sigs[0].createdAt?new Date(sigs[0].createdAt):null;
+  if(firstCreated){
+    const ist=new Date(firstCreated.getTime()+(5.5*60*60*1000));
+    const hh=ist.getUTCHours(),mm=String(ist.getUTCMinutes()).padStart(2,'0');
+    const ampm=hh>=12?'PM':'AM';
+    const h12=hh>12?hh-12:hh||12;
+    headerTime.textContent=h12+':'+mm+' '+ampm+' picks — fixed for day';
+  }
+
+  let totalHypPnl=0, maxPossible=0;
+
+  const rows=sigs.map((s,i)=>{
+    const lot=getLot(s.stock);
+    const result=s.signal_result||'PENDING';
+    const isBear=s.bias==='Bearish'||s.bias==='bearish';
+    const livePrice=pm[s.stock]||0;
+    const entryP=s.entry_price||0;
+
+    // Determine hypothetical status
+    // Priority: DB result > EOD auto-exit > entry_triggered > price check > waiting
+    let hypStatus='waiting';
+    let hypPnl=0, exitPrice=0;
+
+    if(result==='TARGET_HIT'){
+      hypStatus='target'; exitPrice=s.target1||entryP;
+    } else if(result==='SL_HIT'){
+      hypStatus='sl'; exitPrice=s.sl_price||entryP;
+    } else if(result==='EXITED_EOD'){
+      hypStatus='eod'; exitPrice=s.eod_price||livePrice||entryP;
+    } else if(isEOD&&s.entry_triggered){
+      // 3:30 PM auto-exit for open trades
+      hypStatus='eod'; exitPrice=livePrice||s.eod_price||entryP;
+    } else if(isEOD&&livePrice&&entryP){
+      // 3:30 PM — check if price had crossed entry at any point
+      // If entry_triggered, use that; else show as skipped (never entered)
+      hypStatus=s.entry_triggered?'eod':'waiting';
+      if(s.entry_triggered) exitPrice=livePrice||entryP;
+    } else if(s.entry_triggered){
+      // Live — price has crossed entry, currently in hypothetical trade
+      hypStatus='entered'; exitPrice=livePrice||entryP;
+    } else if(entryP&&livePrice){
+      // Check if price is currently at/past entry (auto-detect for display only)
+      const pastEntry=isBear?(livePrice<=entryP):(livePrice>=entryP);
+      if(pastEntry){ hypStatus='entered'; exitPrice=livePrice; }
+      else { hypStatus='waiting'; }
+    } else {
+      hypStatus='waiting';
+    }
+
+    // Calculate P&L
+    if(hypStatus!=='waiting'&&exitPrice&&entryP){
+      hypPnl=calcPnL(entryP,exitPrice,lot,s.bias);
+    }
+    if(hypStatus!=='waiting') totalHypPnl+=hypPnl;
+    maxPossible+=calcPnL(entryP,s.target1||entryP,lot,s.bias);
+
+    // Status pill content
+    const pillMap={
+      waiting:{cls:'sp-waiting',lbl:'Waiting'},
+      entered:{cls:'sp-entered',lbl:'Entered'},
+      target:{cls:'sp-target',lbl:'Target Hit ✅'},
+      sl:{cls:'sp-sl',lbl:'SL Hit ❌'},
+      eod:{cls:'sp-eod',lbl:'3:30 Exit'}
+    };
+    const pill=pillMap[hypStatus]||pillMap.waiting;
+
+    // P&L display value
+    const pnlColor=hypPnl>0?'var(--green)':hypPnl<0?'var(--red)':'var(--txt3)';
+    const pnlDisplay=hypPnl!==0?(hypPnl>=0?'+':'')+'\u20B9'+Math.abs(hypPnl).toLocaleString('en-IN'):'—';
+    const pnlSub=hypStatus==='entered'?'live hypothetical':
+                 hypStatus==='target'?'T1 hit at '+fmt(exitPrice):
+                 hypStatus==='sl'?'SL hit at '+fmt(exitPrice):
+                 hypStatus==='eod'?'Exited at '+fmt(exitPrice):'Entry: \u20B9'+fmt(entryP);
+
+    // Progress bar for ENTERED
+    const t1Pts=s.target1&&entryP?Math.abs(s.target1-entryP):0;
+    const slPts=s.sl_price&&entryP?Math.abs(s.sl_price-entryP):0;
+    const totalRange=t1Pts+slPts;
+    const movePts=hypStatus==='entered'&&livePrice&&entryP?
+      Math.round((isBear?(entryP-livePrice):(livePrice-entryP))*10)/10:0;
+    // Progress: 0=at entry, positive=toward T1, can go negative toward SL
+    // Bar: center=entry, right=T1, left=SL
+    const pctToT1=t1Pts>0?Math.min(100,Math.max(-100,Math.round((movePts/t1Pts)*100))):0;
+    const barWidth=Math.min(100,Math.abs(pctToT1));
+    const barColor=movePts>=0?'var(--green)':'var(--red)';
+    const liveBar=hypStatus==='entered'?`<div class="hyp-live-bar">
+      <div class="hlb-track">
+        <div class="hlb-fill" style="width:${barWidth}%;background:${barColor}"></div>
+      </div>
+      <div class="hlb-labels">
+        <span style="color:var(--red)">SL \u20B9${fmt(s.sl_price)}</span>
+        <span style="color:${barColor}">${movePts>=0?'+':''}${movePts} pts (${pctToT1}% to T1)</span>
+        <span style="color:var(--green)">T1 \u20B9${fmt(s.target1)}</span>
+      </div>
+    </div>`:'';
+
+    // Result strip for finished trades
+    const resultBg=hypStatus==='target'?'var(--green-bg)':hypStatus==='sl'?'var(--red-bg)':'#f5f3ff';
+    const resultBd=hypStatus==='target'?'var(--green-bd)':hypStatus==='sl'?'var(--red-bd)':'#c4b5fd';
+    const resultIcon=hypStatus==='target'?'✅':hypStatus==='sl'?'❌':'🕐';
+    const resultMsg=hypStatus==='target'?'Target 1 hit':hypStatus==='sl'?'Stop loss hit':'Auto-exited at market close';
+    const resultStrip=(hypStatus==='target'||hypStatus==='sl'||hypStatus==='eod')?`<div class="hyp-result-strip" style="background:${resultBg};border-top:1px solid ${resultBd}">
+      <div class="hrs-left">${resultIcon} ${resultMsg}</div>
+      <div class="hrs-right">\u20B9${fmt(entryP)} → \u20B9${fmt(exitPrice)}</div>
+    </div>`:'';
+
+    return`<div class="hyp-pick status-${hypStatus}">
+      <div class="hyp-pick-main">
+        <div class="hyp-num">${i+1}</div>
+        <div class="hyp-info">
+          <div class="hyp-name">${sn(s.stock)}</div>
+          <div class="hyp-levels"><span class="hyp-entry-lbl">Entry</span> \u20B9${fmt(entryP)} &middot; SL \u20B9${fmt(s.sl_price)} &middot; T1 \u20B9${fmt(s.target1)}</div>
+        </div>
+        <div class="hyp-status-block">
+          <div><div class="hyp-status-pill ${pill.cls}">${pill.lbl}</div></div>
+          <div class="hyp-pnl-val" style="color:${hypPnl!==0?pnlColor:'var(--txt3)'}">${pnlDisplay}</div>
+          <div class="hyp-pnl-sub">${pnlSub}</div>
+        </div>
+      </div>
+      ${liveBar}
+      ${resultStrip}
+    </div>`;
+  }).join('');
+
+  body.innerHTML=rows;
+  footer.style.display='flex';
+  totalHypPnl=Math.round(totalHypPnl);
+  const fpnl=document.getElementById('hyp-footer-pnl');
+  fpnl.textContent=(totalHypPnl>=0?'+':'')+'\u20B9'+Math.abs(totalHypPnl).toLocaleString('en-IN');
+  fpnl.style.color=totalHypPnl>=0?'var(--green)':'var(--red)';
+  document.getElementById('hyp-footer-meta').textContent=
+    isEOD?'Final — market closed':'Live hypothetical · updates every 60s';
+  document.getElementById('hyp-max-pnl').textContent=
+    '+\u20B9'+Math.round(maxPossible).toLocaleString('en-IN');
 }
 
 function renderResults(){
@@ -1160,6 +1409,23 @@ function renderResults(){
   }
   const sigs=todaySigs.length?todaySigs:(window._sigs&&window._sigs.length?window._sigs:[]);
 
+  const ats=dashData.activeTrades||[];
+  const pm={
+    NIFTY50:dashData.nifty?dashData.nifty.price:0,
+    BANKNIFTY:dashData.banknifty?dashData.banknifty.price:0,
+    ICICIBANK:dashData.icici?dashData.icici.price:0,
+    HDFCBANK:dashData.hdfcbank?dashData.hdfcbank.price:0,
+    RELIANCE:dashData.reliance?dashData.reliance.price:0,
+    SBIN:dashData.sbin?dashData.sbin.price:0,
+    AXISBANK:dashData.axisbank?dashData.axisbank.price:0,
+    INFY:dashData.infy?dashData.infy.price:0,
+    TCS:dashData.tcs?dashData.tcs.price:0,
+    HINDUNILVR:dashData.sbin?dashData.sbin.price:0
+  };
+
+  // ── Render hypothetical tracker ──
+  renderHypTracker(sigs, pm, isEOD);
+
   if(!sigs.length){
     document.getElementById('rs-total').textContent='\u20B90';
     document.getElementById('rs-wins').textContent='0';
@@ -1172,20 +1438,6 @@ function renderResults(){
     return;
   }
 
-  const ats=dashData.activeTrades||[];
-  const pm={
-    NIFTY50:dashData.nifty?dashData.nifty.price:0,
-    BANKNIFTY:dashData.banknifty?dashData.banknifty.price:0,
-    ICICIBANK:dashData.icici?dashData.icici.price:0,
-    HDFCBANK:dashData.hdfcbank?dashData.hdfcbank.price:0,
-    RELIANCE:dashData.reliance?dashData.reliance.price:0,
-    SBIN:dashData.sbin?dashData.sbin.price:0,
-    AXISBANK:dashData.axisbank?dashData.axisbank.price:0,
-    INFY:dashData.infy?dashData.infy.price:0,
-    TCS:dashData.tcs?dashData.tcs.price:0,
-    HINDUNILVR:dashData.sbin?dashData.sbin.price:0 // fallback
-  };
-
   let totalPnl=0,wins=0,sls=0,waiting=0,activeCount=0;
 
   const rows=sigs.map((s,i)=>{
@@ -1197,22 +1449,22 @@ function renderResults(){
     const entryP=at?at.entry_price:s.entry_price;
     const isBear=s.bias==='Bearish'||s.bias==='bearish';
 
-    // Determine status — most precise first
     let status='WAITING';
     if(result==='TARGET_HIT') status='TARGET_HIT';
     else if(result==='SL_HIT') status='SL_HIT';
     else if(result==='PARTIAL_WIN') status='PARTIAL_WIN';
+    else if(result==='EXITED_EOD') status='EXITED_EOD';
     else if(at) status='IN_TRADE';
     else if(closed) status='CLOSED';
     else if(s.entry_triggered) status='IN_TRADE';
 
-    // Entry triggered but not manually logged
     const autoTriggered=s.entry_triggered&&!at&&status!=='TARGET_HIT'&&status!=='SL_HIT';
 
     let pnl=0,exitP=0,cp=livePrice||s.eod_price||0;
     if(status==='TARGET_HIT'){exitP=s.target1||s.eod_price;wins++;}
     else if(status==='PARTIAL_WIN'){exitP=Math.round(((s.target1||0)+(s.entry_price||0))/2);wins++;}
     else if(status==='SL_HIT'){exitP=s.sl_price||s.eod_price;sls++;}
+    else if(status==='EXITED_EOD'){exitP=s.eod_price||cp;activeCount++;}
     else if(status==='IN_TRADE'||status==='CLOSED'){exitP=cp;activeCount++;}
     else{waiting++;}
     pnl=exitP?calcPnL(entryP,exitP,lot,s.bias):0;
@@ -1223,18 +1475,17 @@ function renderResults(){
     const moveColor=movePts>0?'var(--green)':movePts<0?'var(--red)':'var(--txt3)';
     const showPnl=(exitP>0&&pnl!==0);
 
-    // Status display
     const statusMap={
       TARGET_HIT:{l:'Target hit \u2705',c:'rb-hit'},
       SL_HIT:{l:'SL hit \u274C',c:'rb-sl'},
       PARTIAL_WIN:{l:'Partial \u26A0\uFE0F',c:'rb-partial'},
+      EXITED_EOD:{l:'EOD Exit \uD83D\uDD50',c:'rb-active'},
       IN_TRADE:{l:'In trade \uD83D\uDFE1',c:'rb-active'},
       CLOSED:{l:'Exited',c:'rb-active'},
       WAITING:{l:'Waiting',c:'rb-wait'}
     };
     const sm=statusMap[status]||statusMap.WAITING;
 
-    // For entry-triggered auto signals: show what happened
     let autoNote='';
     if(autoTriggered){
       autoNote='<div style="font-size:10px;color:var(--amber);font-weight:600;margin-top:4px">\u26A1 Auto-detected entry at '+fmt(s.entry_price)+'</div>';
@@ -1274,22 +1525,20 @@ function renderResults(){
       const rrAchieved=riskPerLot&&r.pnl?Math.round((Math.abs(r.pnl)/riskPerLot)*10)/10:0;
       const pnlPct=r.entryP&&r.exitP?Math.round(((r.exitP-r.entryP)/r.entryP)*(r.isBear?-10000:10000))/100:0;
 
-      // Determine the exit label and color
       let exitLabel,exitColor,exitIcon;
       if(r.status==='TARGET_HIT'){exitLabel='Target 1 hit \u2705';exitColor='var(--green)';exitIcon='\u2705';}
       else if(r.status==='SL_HIT'){exitLabel='Stop loss hit \u274C';exitColor='var(--red)';exitIcon='\u274C';}
       else if(r.status==='PARTIAL_WIN'){exitLabel='Partial exit';exitColor='var(--amber)';exitIcon='\u26A0\uFE0F';}
-      else if(r.status==='CLOSED'){exitLabel='Your exit';exitColor='var(--txt2)';exitIcon='→';}
+      else if(r.status==='EXITED_EOD'){exitLabel='Auto-exit 3:30 PM \uD83D\uDD50';exitColor='#8b5cf6';exitIcon='\uD83D\uDD50';}
+      else if(r.status==='CLOSED'){exitLabel='Your exit';exitColor='var(--txt2)';exitIcon='\u2192';}
       else if(r.status==='IN_TRADE'){exitLabel='In trade now';exitColor='var(--amber)';exitIcon='\uD83D\uDFE1';}
-      else{exitLabel='Waiting';exitColor='var(--txt3)';exitIcon='—';}
+      else{exitLabel='Waiting';exitColor='var(--txt3)';exitIcon='\u2014';}
 
       const resultBadge=r.pnl>0?'b-hit':r.pnl<0?'b-sl':'b-pend';
-      const resultTxt=r.status==='TARGET_HIT'?'TARGET HIT':r.status==='SL_HIT'?'SL HIT':r.status==='IN_TRADE'?'IN TRADE':r.status==='CLOSED'?'EXITED':r.pnl>0?'WIN':r.pnl<0?'LOSS':'WAITING';
+      const resultTxt=r.status==='TARGET_HIT'?'TARGET HIT':r.status==='SL_HIT'?'SL HIT':r.status==='EXITED_EOD'?'EOD EXIT':r.status==='IN_TRADE'?'IN TRADE':r.status==='CLOSED'?'EXITED':r.pnl>0?'WIN':r.pnl<0?'LOSS':'WAITING';
 
-      // Auto-trigger strip — show if entry_triggered
       const autoStrip=r.s.entry_triggered?`<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:11px;color:var(--amber)"><strong>\u26A1 Auto-detected:</strong> Price crossed entry ${fmt(r.entryP)} — live monitor triggered</div>`:'';
 
-      // T1 / SL progress
       const isBullish=!r.isBear;
       const t1Pts=Math.abs((r.s.target1||0)-r.entryP);
       const slPts=Math.abs(r.entryP-(r.s.sl_price||0));
@@ -1297,7 +1546,7 @@ function renderResults(){
       const pctToT1=t1Pts>0?Math.min(100,Math.max(0,Math.round((currMovePts/t1Pts)*100))):0;
       const progressColor=currMovePts>=0?'var(--green)':'var(--red)';
 
-      const progressBar=r.status==='IN_TRADE'?`<div style="margin-top:8px">
+      const progressBar=(r.status==='IN_TRADE')?`<div style="margin-top:8px">
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);margin-bottom:3px">
           <span>SL ${fmt(r.s.sl_price)}</span>
           <span style="color:${progressColor}">${pctToT1}% to T1</span>
@@ -1322,7 +1571,7 @@ function renderResults(){
           </div>
           ${progressBar}
           <div class="eod-lot-row">
-            <div class="eod-lot-item"><div class="eod-lot-lbl">P&L (Rs)</div><div class="eod-lot-val" style="color:${r.pnl!==0?pnlColor:'var(--txt3)'}">${r.pnl!==0?(r.pnl>=0?'+':'')+'\u20B9'+Math.abs(r.pnl).toLocaleString('en-IN'):'—'}</div></div>
+            <div class="eod-lot-item"><div class="eod-lot-lbl">P&amp;L (Rs)</div><div class="eod-lot-val" style="color:${r.pnl!==0?pnlColor:'var(--txt3)'}">${r.pnl!==0?(r.pnl>=0?'+':'')+'\u20B9'+Math.abs(r.pnl).toLocaleString('en-IN'):'—'}</div></div>
             <div class="eod-lot-item"><div class="eod-lot-lbl">Move</div><div class="eod-lot-val" style="color:${r.pnl!==0?pnlColor:'var(--txt3)'}">${pnlPct!==0?(pnlPct>=0?'+':'')+pnlPct+'%':'—'}</div></div>
             <div class="eod-lot-item"><div class="eod-lot-lbl">R:R</div><div class="eod-lot-val">${rrAchieved>0?'1:'+rrAchieved:'—'}</div></div>
           </div>
