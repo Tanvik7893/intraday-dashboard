@@ -660,13 +660,14 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Inter',
 
 <!-- MOBILE NAV -->
 <nav id="nav">
-  <button class="nb active" onclick="goto('today',this)" data-page="today">
+  <button class="nb active" onclick="goto('today',this)" data-page="today" style="position:relative">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="19.78" y1="4.22" x2="17.66" y2="6.34"/><line x1="6.34" y1="17.66" x2="4.22" y2="19.78"/></svg>
     Today
+    <span id="nb-badge" style="display:none;position:absolute;top:6px;right:calc(50% - 18px);background:var(--blue);color:#fff;font-size:8px;font-weight:800;min-width:14px;height:14px;border-radius:7px;padding:0 3px;line-height:14px;text-align:center"></span>
   </button>
-  <button class="nb" onclick="goto('active',this)" data-page="active" id="nb-active">
-    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-    Active
+  <button class="nb" onclick="goto('results',this)" data-page="results">
+    <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    Results
   </button>
   <button class="nb" onclick="goto('history',this)" data-page="history">
     <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
@@ -676,18 +677,10 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Inter',
     <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
     Log
   </button>
-  <button class="nb" onclick="goto('results',this)" data-page="results">
-    <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-    Results
-  </button>
   <button class="nb" onclick="goto('perf',this)" data-page="perf">
     <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
     Perf
   </button>
-  <a class="nb" href="/backtest.html" style="text-decoration:none;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--txt3);font-size:9px;font-weight:500;padding-top:2px;">
-    <svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/><line x1="2" y1="17" x2="22" y2="17"/></svg>
-    Backtest
-  </a>
 </nav>
 
 </div><!-- /app -->
@@ -811,7 +804,12 @@ function renderToday(d){
   const skipped=todaySigs.filter(s=>s.score<72);
   const ats=d.activeTrades||[];
   const optData=d.optionData||{};
-  const pm={NIFTY50:d.nifty?d.nifty.price:0,BANKNIFTY:d.banknifty?d.banknifty.price:0,ICICIBANK:d.icici?d.icici.price:0,HDFCBANK:d.hdfcbank?d.hdfcbank.price:0,RELIANCE:d.reliance?d.reliance.price:0,SBIN:d.sbin?d.sbin.price:0,AXISBANK:d.axisbank?d.axisbank.price:0,INFY:d.infy?d.infy.price:0,TCS:d.tcs?d.tcs.price:0};
+  // Update active trades badge on Today nav tab
+  const badge=document.getElementById('nb-badge');
+  if(badge){const n=ats.filter(t=>t.status==='open').length;badge.textContent=n;badge.style.display=n>0?'inline-block':'none';}
+  // livePrices — dynamic map from proxy v18 (covers any stock in today's signals)
+  const lp=d.livePrices||{};
+  const pm=new Proxy(lp,{get:(t,k)=>t[k]||(d.nifty&&k==='NIFTY50'?d.nifty.price:d.banknifty&&k==='BANKNIFTY'?d.banknifty.price:d.icici&&k==='ICICIBANK'?d.icici.price:d.hdfcbank&&k==='HDFCBANK'?d.hdfcbank.price:d.reliance&&k==='RELIANCE'?d.reliance.price:d.sbin&&k==='SBIN'?d.sbin.price:d.axisbank&&k==='AXISBANK'?d.axisbank.price:0)});
   renderPnlBanner(todaySigs, pm);
   buildSignalList(active.length?active:[], pm, ats, optData);
   renderEventTimeline(todaySigs);
@@ -1125,7 +1123,7 @@ async function confirmEntry(){
     await fetch(AT_URL,{method:'POST',headers:DBH,body:JSON.stringify({rows:[{trade_date:new Date().toISOString().split('T')[0],stock:modalSig.stock,signal_rank:1,direction:'LONG',entry_price:price,sl_price:modalSig.sl_price||0,target1:modalSig.target1||0,target2:modalSig.target2||0,quantity:qty,trade_type:'equity',entry_time:new Date().toISOString(),status:'open',current_price:price,pnl_rs:0,pnl_pct:0,alert_sl_sent:false,alert_t1_sent:false,checklist_passed:!checkAnswers.some(a=>a==='N'),notes:checkAnswers.map((a,i)=>['ORB:'+a,'VWAP:'+a,'SL:'+a][i]).join(', ')}]})});
     toast('Saved. Live monitor is tracking this trade.');
     document.getElementById('modal-bg').classList.remove('open');
-    setTimeout(()=>{loadData();goto('active',document.getElementById('nb-active'));},800);
+    setTimeout(()=>{loadData();goto('today',document.querySelector('[data-page="today"]'));},800);
   }catch(e){toast('Error — try again');document.getElementById('confirm-btn').disabled=false;document.getElementById('confirm-btn').textContent='Confirm — start tracking';}
 }
 function exitTrade(sig,trade){
@@ -1143,7 +1141,10 @@ function renderHistory(){
   const sigs=[...(dashData.recentSignals||[]),...(dashData.todaySignals||[])];
   if(!sigs.length){document.getElementById('hist-list').innerHTML='<div class="empty">No history yet.</div>';return;}
   const byDay={};sigs.forEach(s=>{if(!byDay[s.signal_date])byDay[s.signal_date]=[];byDay[s.signal_date].push(s);});
-  document.getElementById('hist-list').innerHTML=Object.keys(byDay).sort((a,b)=>b>a?1:-1).map(day=>{
+  // Filter out weekends (Saturday=6, Sunday=0)
+  const weekdaysOnly=Object.keys(byDay).filter(day=>{const dow=new Date(day+'T00:00:00').getDay();return dow!==0&&dow!==6;});
+  if(!weekdaysOnly.length){document.getElementById('hist-list').innerHTML='<div class="empty">No history yet.</div>';return;}
+  document.getElementById('hist-list').innerHTML=weekdaysOnly.sort((a,b)=>b>a?1:-1).map(day=>{
     const rows=byDay[day],wins=rows.filter(s=>s.signal_result==='TARGET_HIT'||s.signal_result==='PARTIAL_WIN').length;
     const d=new Date(day+'T00:00:00'),lbl=d.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short'});
     return`<div class="day-group"><div class="dg-head"><div class="dg-date">${lbl}</div><div class="dg-meta">${wins}/${rows.length} target</div></div><div class="dg-rows">${rows.map(s=>{const res=s.signal_result||'PENDING';const bc=res==='TARGET_HIT'?'b-hit':res==='SL_HIT'?'b-sl':res==='PARTIAL_WIN'?'b-part':'b-pend';const bl=res==='TARGET_HIT'?'Target':res==='SL_HIT'?'SL':res==='PARTIAL_WIN'?'Partial':'Pending';const p=s.actual_pnl_pct||0;return`<div class="dg-row"><div class="dg-s">${sn(s.stock)}</div><div class="dg-arr">${fmt(s.entry_price)} → ${fmt(s.eod_price)}</div><div class="dg-b"><span class="yd-badge ${bc}">${bl}</span></div><div class="dg-p" style="color:${gc(p)}">${fmtP(p)}</div></div>`;}).join('')}</div></div>`;
@@ -1410,18 +1411,9 @@ function renderResults(){
   const sigs=todaySigs.length?todaySigs:(window._sigs&&window._sigs.length?window._sigs:[]);
 
   const ats=dashData.activeTrades||[];
-  const pm={
-    NIFTY50:dashData.nifty?dashData.nifty.price:0,
-    BANKNIFTY:dashData.banknifty?dashData.banknifty.price:0,
-    ICICIBANK:dashData.icici?dashData.icici.price:0,
-    HDFCBANK:dashData.hdfcbank?dashData.hdfcbank.price:0,
-    RELIANCE:dashData.reliance?dashData.reliance.price:0,
-    SBIN:dashData.sbin?dashData.sbin.price:0,
-    AXISBANK:dashData.axisbank?dashData.axisbank.price:0,
-    INFY:dashData.infy?dashData.infy.price:0,
-    TCS:dashData.tcs?dashData.tcs.price:0,
-    HINDUNILVR:dashData.sbin?dashData.sbin.price:0
-  };
+  // livePrices — dynamic map from proxy v18 (works for any stock)
+  const lp2=dashData.livePrices||{};
+  const pm=new Proxy(lp2,{get:(t,k)=>t[k]||(dashData.nifty&&k==='NIFTY50'?dashData.nifty.price:dashData.banknifty&&k==='BANKNIFTY'?dashData.banknifty.price:dashData.icici&&k==='ICICIBANK'?dashData.icici.price:dashData.hdfcbank&&k==='HDFCBANK'?dashData.hdfcbank.price:dashData.reliance&&k==='RELIANCE'?dashData.reliance.price:dashData.sbin&&k==='SBIN'?dashData.sbin.price:dashData.axisbank&&k==='AXISBANK'?dashData.axisbank.price:0)});
 
   // ── Render hypothetical tracker ──
   renderHypTracker(sigs, pm, isEOD);
