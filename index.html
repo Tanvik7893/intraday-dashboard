@@ -60,6 +60,8 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Inter',
 .page.active{display:block;animation:fadein .15s ease;}
 @keyframes fadein{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 .sec-label{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--txt3);text-transform:uppercase;padding:14px 16px 6px;}
+.pnl-banner{margin:8px 12px 0;padding:10px 16px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;display:none;flex-direction:column;gap:2px;}
+.event-timeline{margin:4px 12px 8px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;display:none;}
 
 /* GREETING */
 .greeting{padding:14px 16px 0;display:flex;justify-content:space-between;align-items:center;}
@@ -438,12 +440,14 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Inter',
     </div>
   </div>
   <div id="cap-wrap" class="cap-banner" style="display:none"><span class="cap-lbl">Capital in market today</span><span id="cap-val" class="cap-val cap-safe">₹0</span></div>
+  <div id="pnl-banner" class="pnl-banner"></div>
   <div class="sec-label" style="display:flex;justify-content:space-between;align-items:center;padding-right:16px;">
     <span>Today's 5 picks</span>
     <span id="last-update" style="font-size:10px;color:var(--txt3);font-weight:400;">—</span>
   </div>
   <div id="signals-list" class="signals-list"></div>
   <div id="skip-wrap" style="display:none" class="skip-card"><div class="skip-lbl">Below threshold</div><div id="skip-items"></div></div>
+  <div id="event-timeline" class="event-timeline"></div>
   <div class="sec-label">Yesterday</div>
   <div id="yday-wrap"><div class="empty">—</div></div>
   <div style="height:12px"></div>
@@ -689,13 +693,31 @@ function renderToday(d){
   const pcr=document.getElementById('chip-pcr');pcr.textContent=d.pcr?(+d.pcr).toFixed(2):'—';pcr.style.color=d.pcr>=1.2?'var(--green)':d.pcr<0.8?'var(--red)':'var(--amber)';
   if(d.isExpiry){document.getElementById('expiry-wrap').style.display='flex';document.getElementById('expiry-txt').textContent=d.expiryText||'';}
   const today=new Date().toISOString().split('T')[0];
-  const todaySigs=(d.todaySignals||[]).filter(s=>s.signal_date===today);
+  // Get today's signals — then pick ONLY the latest batch (last WF1 run)
+  // Group by createdAt rounded to minute, pick the group with the highest timestamp
+  const allToday=(d.todaySignals||[]).filter(s=>s.signal_date===today);
+  let todaySigs=allToday;
+  if(allToday.length>0){
+    // Find the latest createdAt minute-bucket
+    const buckets={};
+    allToday.forEach(s=>{
+      const bucket=s.createdAt?s.createdAt.substr(0,16):''; // "2026-06-08T04:35"
+      if(!buckets[bucket])buckets[bucket]=[];
+      buckets[bucket].push(s);
+    });
+    const latestBucket=Object.keys(buckets).sort().pop();
+    todaySigs=buckets[latestBucket]||allToday;
+  }
+  // Filter out any STALE rows (marked by WF1 dedup) and score threshold
+  todaySigs=todaySigs.filter(s=>s.signal_result!=='STALE'&&s.score>0);
   const active=todaySigs.filter(s=>s.score>=72);
   const skipped=todaySigs.filter(s=>s.score<72);
   const ats=d.activeTrades||[];
   const optData=d.optionData||{};
   const pm={NIFTY50:d.nifty?d.nifty.price:0,BANKNIFTY:d.banknifty?d.banknifty.price:0,ICICIBANK:d.icici?d.icici.price:0,HDFCBANK:d.hdfcbank?d.hdfcbank.price:0,RELIANCE:d.reliance?d.reliance.price:0,SBIN:d.sbin?d.sbin.price:0,AXISBANK:d.axisbank?d.axisbank.price:0,INFY:d.infy?d.infy.price:0,TCS:d.tcs?d.tcs.price:0};
+  renderPnlBanner(todaySigs, pm);
   buildSignalList(active.length?active:[], pm, ats, optData);
+  renderEventTimeline(todaySigs);
   if(skipped.length){document.getElementById('skip-wrap').style.display='block';document.getElementById('skip-items').innerHTML=skipped.map(s=>`<div class="skip-item"><div class="skip-n">${sn(s.stock)}</div><div class="skip-r">Score ${s.score}/100 — below threshold</div></div>`).join('');}
   const ydStr=getYday();
   const yd=(d.recentSignals||[]).filter(s=>s.signal_date===ydStr);
@@ -704,6 +726,108 @@ function renderToday(d){
   if(risk>0){document.getElementById('cap-wrap').style.display='flex';const cv=document.getElementById('cap-val');cv.textContent='₹'+Math.round(risk).toLocaleString('en-IN');cv.className='cap-val '+(risk>=10000?'cap-max':risk>=5000?'cap-warn':'cap-safe');}
 }
 function getYday(){const d=new Date();d.setDate(d.getDate()-1);if(d.getDay()===0)d.setDate(d.getDate()-2);if(d.getDay()===6)d.setDate(d.getDate()-1);return d.toISOString().split('T')[0];}
+
+function renderPnlBanner(sigs, pm){
+  const el=document.getElementById('pnl-banner');
+  if(!el||!sigs||!sigs.length){if(el)el.style.display='none';return;}
+  const LOT_SZ={NIFTY50:75,BANKNIFTY:30,HDFCBANK:550,RELIANCE:250,ICICIBANK:700,SBIN:1500,TATAMOTORS:900,AXISBANK:625,INFY:300,TCS:150,KOTAKBANK:400,BAJFINANCE:125,MARUTI:50,TITAN:375,SUNPHARMA:700,WIPRO:1500,HCLTECH:350,TECHM:500,LT:150,BHARTIARTL:475,ITC:2400,HINDUNILVR:300};
+  let totalPnl=0,wins=0,losses=0,open=0;
+  sigs.forEach(s=>{
+    const lot=LOT_SZ[s.stock]||75;
+    const isBear=s.bias==='Bearish';
+    const result=s.signal_result||'PENDING';
+    if(result==='TARGET_HIT'){
+      const t1Pts=Math.abs((s.target1||0)-(s.entry_price||0));
+      totalPnl+=Math.round(t1Pts*lot); wins++;
+    } else if(result==='SL_HIT'){
+      const slPts=Math.abs((s.entry_price||0)-(s.sl_price||0));
+      totalPnl-=Math.round(slPts*lot); losses++;
+    } else if(result==='PENDING'||result===''){
+      // live running P&L for open picks
+      const livePrice=pm[s.stock]||0;
+      if(livePrice>0&&s.entry_price>0){
+        const movePts=isBear?(s.entry_price-livePrice):(livePrice-s.entry_price);
+        totalPnl+=Math.round(movePts*lot);
+        open++;
+      }
+    }
+  });
+  const color=totalPnl>=0?'var(--green)':'var(--red)';
+  const bg=totalPnl>=0?'var(--green-bg)':'var(--red-bg)';
+  const bd=totalPnl>=0?'var(--green-bd)':'var(--red-bd)';
+  let parts=[];
+  if(wins>0)parts.push(`${wins} win${wins>1?'s':''}`);
+  if(losses>0)parts.push(`${losses} SL`);
+  if(open>0)parts.push(`${open} open`);
+  el.style.display='flex';
+  el.style.background=bg;
+  el.style.borderColor=bd;
+  el.innerHTML=`<div style="font-size:11px;font-weight:700;color:${color};letter-spacing:0.04em">Today's P&L (1 lot)</div><div style="font-size:16px;font-weight:800;color:${color}">${totalPnl>=0?'+':''}₹${Math.abs(totalPnl).toLocaleString('en-IN')}</div><div style="font-size:10px;color:var(--txt3);margin-top:2px">${parts.join(' · ')||'signals pending'}</div>`;
+}
+
+function renderEventTimeline(sigs){
+  const el=document.getElementById('event-timeline');
+  if(!el)return;
+  if(!sigs||!sigs.length){el.style.display='none';return;}
+  // Build event rows from signal data
+  const events=[];
+  sigs.forEach(s=>{
+    // Signal generated time
+    if(s.createdAt){
+      const ist=new Date(new Date(s.createdAt).getTime()+(5.5*60*60*1000));
+      const t=ist.toISOString().substr(11,5);
+      events.push({time:t,stock:s.stock,event:'Signal generated',price:s.entry_price,color:'var(--txt2)',icon:'◎'});
+    }
+    // Entry triggered
+    if(s.entry_triggered&&s.entry_price){
+      const entryT=s.entry_time||s.updatedAt||s.createdAt||'';
+      const ist2=new Date(new Date(entryT).getTime()+(5.5*60*60*1000));
+      const t2=entryT?ist2.toISOString().substr(11,5):'—';
+      events.push({time:t2,stock:s.stock,event:'Entry triggered',price:s.entry_price,color:'var(--amber)',icon:'▶'});
+    }
+    // Result
+    if(s.signal_result==='TARGET_HIT'&&s.target1){
+      const exitT=s.exit_time||s.updatedAt||'';
+      const ist3=new Date(new Date(exitT).getTime()+(5.5*60*60*1000));
+      const t3=exitT?ist3.toISOString().substr(11,5):'—';
+      const LOT_SZ={NIFTY50:75,BANKNIFTY:30,HDFCBANK:550,RELIANCE:250,ICICIBANK:700,SBIN:1500,AXISBANK:625,INFY:300,TCS:150};
+      const lot=LOT_SZ[s.stock]||75;
+      const pts=Math.abs(s.target1-s.entry_price);
+      const pnl='+₹'+Math.round(pts*lot).toLocaleString('en-IN');
+      events.push({time:t3,stock:s.stock,event:'T1 hit',price:s.target1,pnl:pnl,color:'var(--green)',icon:'✓'});
+    } else if(s.signal_result==='SL_HIT'&&s.sl_price){
+      const exitT=s.exit_time||s.updatedAt||'';
+      const ist4=new Date(new Date(exitT).getTime()+(5.5*60*60*1000));
+      const t4=exitT?ist4.toISOString().substr(11,5):'—';
+      const LOT_SZ2={NIFTY50:75,BANKNIFTY:30,HDFCBANK:550,RELIANCE:250,ICICIBANK:700,SBIN:1500,AXISBANK:625,INFY:300,TCS:150};
+      const lot2=LOT_SZ2[s.stock]||75;
+      const pts2=Math.abs(s.entry_price-s.sl_price);
+      const pnl2='-₹'+Math.round(pts2*lot2).toLocaleString('en-IN');
+      events.push({time:t4,stock:s.stock,event:'SL hit',price:s.sl_price,pnl:pnl2,color:'var(--red)',icon:'✗'});
+    }
+  });
+  if(!events.length){el.style.display='none';return;}
+  events.sort((a,b)=>a.time.localeCompare(b.time));
+  el.style.display='block';
+  el.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--txt3);letter-spacing:0.1em;text-transform:uppercase;padding:12px 14px 6px">Today's Events</div>
+  <div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;font-size:11px">
+    <thead><tr style="color:var(--txt3);font-size:10px;font-weight:600;letter-spacing:0.05em">
+      <th style="padding:5px 14px;text-align:left;white-space:nowrap">Time</th>
+      <th style="padding:5px 8px;text-align:left">Stock</th>
+      <th style="padding:5px 8px;text-align:left">Event</th>
+      <th style="padding:5px 14px 5px 8px;text-align:right">Price</th>
+      <th style="padding:5px 14px 5px 8px;text-align:right">P&L</th>
+    </tr></thead>
+    <tbody>${events.map((ev,i)=>`<tr style="border-top:1px solid var(--border);background:${i%2===0?'transparent':'rgba(255,255,255,0.01)'}">
+      <td style="padding:7px 14px;color:var(--txt3);white-space:nowrap;font-variant-numeric:tabular-nums">${ev.time}</td>
+      <td style="padding:7px 8px;font-weight:700;color:var(--txt1)">${sn(ev.stock)}</td>
+      <td style="padding:7px 8px;color:${ev.color}">${ev.icon} ${ev.event}</td>
+      <td style="padding:7px 14px 7px 8px;text-align:right;font-variant-numeric:tabular-nums;color:var(--txt2)">${fmt(ev.price||0)}</td>
+      <td style="padding:7px 14px 7px 8px;text-align:right;font-weight:700;color:${ev.color||'var(--txt3)'}">${ev.pnl||'—'}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
 
 function buildSignalList(sigs, pm, ats, optData){
   const el=document.getElementById('signals-list');
