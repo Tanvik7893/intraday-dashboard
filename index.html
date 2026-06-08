@@ -687,12 +687,12 @@ function renderToday(d){
   const active=todaySigs.filter(s=>s.score>=72);
   const skipped=todaySigs.filter(s=>s.score<72);
   const ats=d.activeTrades||[];
-  const pm={NIFTY50:d.nifty?d.nifty.price:0,BANKNIFTY:d.banknifty?d.banknifty.price:0,ICICIBANK:d.icici?d.icici.price:0};
-  buildSignalList(active.length?active:SAMPLE_SIGS, pm, ats);
+  const pm={NIFTY50:d.nifty?d.nifty.price:0,BANKNIFTY:d.banknifty?d.banknifty.price:0,ICICIBANK:d.icici?d.icici.price:0,HDFCBANK:d.hdfcbank?d.hdfcbank.price:0,RELIANCE:d.reliance?d.reliance.price:0,SBIN:d.sbin?d.sbin.price:0,AXISBANK:d.axisbank?d.axisbank.price:0,INFY:d.infy?d.infy.price:0,TCS:d.tcs?d.tcs.price:0};
+  buildSignalList(active.length?active:[], pm, ats);
   if(skipped.length){document.getElementById('skip-wrap').style.display='block';document.getElementById('skip-items').innerHTML=skipped.map(s=>`<div class="skip-item"><div class="skip-n">${sn(s.stock)}</div><div class="skip-r">Score ${s.score}/100 — below threshold</div></div>`).join('');}
   const ydStr=getYday();
   const yd=(d.recentSignals||[]).filter(s=>s.signal_date===ydStr);
-  renderYday(yd.length?yd:SAMPLE_YDAY,ydStr);
+  renderYday(yd.length?yd:[],ydStr);
   const risk=ats.reduce((a,t)=>a+Math.abs((t.entry_price||0)*(t.quantity||1)),0);
   if(risk>0){document.getElementById('cap-wrap').style.display='flex';const cv=document.getElementById('cap-val');cv.textContent='₹'+Math.round(risk).toLocaleString('en-IN');cv.className='cap-val '+(risk>=10000?'cap-max':risk>=5000?'cap-warn':'cap-safe');}
 }
@@ -700,7 +700,7 @@ function getYday(){const d=new Date();d.setDate(d.getDate()-1);if(d.getDay()===0
 
 function buildSignalList(sigs, pm, ats){
   const el=document.getElementById('signals-list');
-  if(!sigs.length){el.innerHTML='<div class="empty">No signals today matching threshold.</div>';return;}
+  if(!sigs.length){el.innerHTML='<div class="empty">Signals will appear at 9:20 AM after market opens.<br>Dashboard refreshes every 30 seconds.</div>';return;}
   window._sigs=sigs; // store for index-based onclick — safe, no JSON in attributes
   window._ats=ats;
   el.innerHTML=sigs.map((s,i)=>{
@@ -930,7 +930,7 @@ async function loadTrades(){
 }
 
 // PERF
-function renderPerf(){
+async function renderPerf(){
   const sigs=dashData?[...(dashData.todaySignals||[]),...(dashData.recentSignals||[])]:SAMPLE_SIGS;
   const res=sigs.filter(s=>s.signal_result&&s.signal_result!=='PENDING');
   const wins=res.filter(s=>s.signal_result==='TARGET_HIT'||s.signal_result==='PARTIAL_WIN');
@@ -952,7 +952,9 @@ function renderPerf(){
     const last=pts[pts.length-1],col=last>=0?'#1a7a4a':'#c0392b';
     svg.innerHTML=`<polyline points="${coords}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${(W-p).toFixed(1)}" cy="${(H-p-((last-min)/rng)*(H-p*2)).toFixed(1)}" r="3" fill="${col}"/>`;
   }
-  const setM={};SAMPLE_TRADES.forEach(t=>{const s=t.setup_type||'Other';if(!setM[s])setM[s]={w:0,t:0};setM[s].t++;if(t.result==='WIN')setM[s].w++;});
+  const setM={};res.forEach(s=>{const st='Signal';if(!setM[st])setM[st]={w:0,t:0};setM[st].t++;if(s.signal_result==='TARGET_HIT')setM[st].w++;});
+  // Also load real trade log
+  try{const r2=await fetch(TL_URL,{headers:DBH});const td=await r2.json();const trades=td.data||[];trades.forEach(t=>{const st=t.setup_type||'Other';if(!setM[st])setM[st]={w:0,t:0};setM[st].t++;if(t.result==='WIN')setM[st].w++;});}catch(e){}
   document.getElementById('setup-rows').innerHTML=Object.entries(setM).sort((a,b)=>(b[1].w/b[1].t)-(a[1].w/a[1].t)).map(([name,v])=>{const p=Math.round(v.w/v.t*100),col=p>=70?'var(--green)':p>=50?'var(--amber)':'var(--red)';return`<div class="setup-row"><div class="setup-name">${name}</div><div class="setup-cell">${v.t}</div><div class="setup-cell">${v.w}</div><div class="setup-cell" style="text-align:right;font-weight:700;color:${col}">${p}%</div></div>`;}).join('');
 }
 
@@ -971,9 +973,12 @@ function getStatus(sig,pm,ats){
   return 'WAITING';
 }
 
-function calcPnL(entryPrice,exitPrice,lot){
+function calcPnL(entryPrice,exitPrice,lot,bias){
   if(!entryPrice||!exitPrice) return 0;
-  return Math.round((exitPrice-entryPrice)*lot*100)/100;
+  // Bearish (PE): profit when price falls — entry minus exit
+  // Bullish (CE): profit when price rises — exit minus entry
+  const dir=(bias==='Bearish'||bias==='bearish')?-1:1;
+  return Math.round((exitPrice-entryPrice)*lot*dir*100)/100;
 }
 
 function renderResults(){
@@ -987,7 +992,13 @@ function renderResults(){
   const pm={
     NIFTY50:dashData.nifty?dashData.nifty.price:0,
     BANKNIFTY:dashData.banknifty?dashData.banknifty.price:0,
-    ICICIBANK:dashData.icici?dashData.icici.price:0
+    ICICIBANK:dashData.icici?dashData.icici.price:0,
+    HDFCBANK:dashData.hdfcbank?dashData.hdfcbank.price:0,
+    RELIANCE:dashData.reliance?dashData.reliance.price:0,
+    SBIN:dashData.sbin?dashData.sbin.price:0,
+    AXISBANK:dashData.axisbank?dashData.axisbank.price:0,
+    INFY:dashData.infy?dashData.infy.price:0,
+    TCS:dashData.tcs?dashData.tcs.price:0
   };
 
   let totalPnl=0,wins=0,sls=0,waiting=0,activeCount=0;
@@ -1006,10 +1017,10 @@ function renderResults(){
     else if(status==='SL_HIT'){exitP=s.sl_price;sls++;}
     else if(status==='IN_TRADE'||status==='CLOSED'){exitP=cp;activeCount++;}
     else{waiting++;}
-    pnl=exitP?calcPnL(s.entry_price,exitP,lot):0;
+    pnl=exitP?calcPnL(s.entry_price,exitP,lot,s.bias):0;
     totalPnl+=pnl;
 
-    const movePct=s.entry_price&&cp?Math.round(((cp-s.entry_price)/s.entry_price)*10000)/100:0;
+    const movePct=s.entry_price&&cp?Math.round(((cp-s.entry_price)/s.entry_price)*(s.bias==='Bearish'?-10000:10000))/100:0;
     const pnlColor=pnl>0?'var(--green)':pnl<0?'var(--red)':'var(--txt3)';
     const moveColor=movePct>0?'var(--green)':movePct<0?'var(--red)':'var(--txt3)';
     const statusMap={TARGET_HIT:{l:'Target hit',c:'rb-hit'},SL_HIT:{l:'SL hit',c:'rb-sl'},PARTIAL_WIN:{l:'Partial',c:'rb-partial'},IN_TRADE:{l:'In trade',c:'rb-active'},CLOSED:{l:'Exited',c:'rb-active'},WAITING:{l:'Waiting',c:'rb-wait'}};
@@ -1047,7 +1058,7 @@ function renderResults(){
       const pnlColor=r.pnl>=0?'var(--green)':'var(--red)';
       const riskPerLot=r.s.entry_price&&r.s.sl_price?Math.abs(r.s.entry_price-r.s.sl_price)*r.lot:0;
       const rrAchieved=riskPerLot&&r.pnl?Math.round((Math.abs(r.pnl)/riskPerLot)*10)/10:0;
-      const pnlPct=r.s.entry_price&&r.exitP?Math.round(((r.exitP-r.s.entry_price)/r.s.entry_price)*10000)/100:0;
+      const pnlPct=r.s.entry_price&&r.exitP?Math.round(((r.exitP-r.s.entry_price)/r.s.entry_price)*(r.s.bias==='Bearish'?-10000:10000))/100:0;
       const exitLabel=r.status==='TARGET_HIT'?'Target 1':r.status==='SL_HIT'?'SL hit':r.status==='PARTIAL_WIN'?'Partial exit':r.status==='CLOSED'?'Your exit':'EOD / Live';
       const resultBadge=r.pnl>0?'b-hit':r.pnl<0?'b-sl':'b-pend';
       const resultTxt=r.pnl>0?'WIN':r.pnl<0?'LOSS':'—';
@@ -1071,7 +1082,7 @@ function renderResults(){
         </div>
       </div>`;
     }).join('')+'</div>';
-    const maxPossible=sigs.reduce((a,s)=>{const l=getLot(s.stock);return a+calcPnL(s.entry_price,s.target1,l);},0);
+    const maxPossible=sigs.reduce((a,s)=>{const l=getLot(s.stock);return a+calcPnL(s.entry_price,s.target1,l,s.bias);},0);
     document.getElementById('eod-note').textContent='P&L figures are theoretical — based on 1 standard lot at the suggested entry price. Max possible if all targets hit: +₹'+Math.round(maxPossible).toLocaleString('en-IN')+'. Actual results depend on your real entry prices.';
   } else {
     eodSec.style.display='none';
@@ -1093,7 +1104,7 @@ const SAMPLE_TRADES=[{stock:'BANKNIFTY',setup_type:'ORB',direction:'LONG',entry_
 
 // INIT
 loadData();
-setInterval(loadData,120000);
+setInterval(loadData,30000);
 </script>
 </body>
 </html>
