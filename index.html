@@ -693,8 +693,9 @@ function renderToday(d){
   const active=todaySigs.filter(s=>s.score>=72);
   const skipped=todaySigs.filter(s=>s.score<72);
   const ats=d.activeTrades||[];
+  const optData=d.optionData||{};
   const pm={NIFTY50:d.nifty?d.nifty.price:0,BANKNIFTY:d.banknifty?d.banknifty.price:0,ICICIBANK:d.icici?d.icici.price:0,HDFCBANK:d.hdfcbank?d.hdfcbank.price:0,RELIANCE:d.reliance?d.reliance.price:0,SBIN:d.sbin?d.sbin.price:0,AXISBANK:d.axisbank?d.axisbank.price:0,INFY:d.infy?d.infy.price:0,TCS:d.tcs?d.tcs.price:0};
-  buildSignalList(active.length?active:[], pm, ats);
+  buildSignalList(active.length?active:[], pm, ats, optData);
   if(skipped.length){document.getElementById('skip-wrap').style.display='block';document.getElementById('skip-items').innerHTML=skipped.map(s=>`<div class="skip-item"><div class="skip-n">${sn(s.stock)}</div><div class="skip-r">Score ${s.score}/100 — below threshold</div></div>`).join('');}
   const ydStr=getYday();
   const yd=(d.recentSignals||[]).filter(s=>s.signal_date===ydStr);
@@ -704,83 +705,86 @@ function renderToday(d){
 }
 function getYday(){const d=new Date();d.setDate(d.getDate()-1);if(d.getDay()===0)d.setDate(d.getDate()-2);if(d.getDay()===6)d.setDate(d.getDate()-1);return d.toISOString().split('T')[0];}
 
-function buildSignalList(sigs, pm, ats){
+function buildSignalList(sigs, pm, ats, optData){
   const el=document.getElementById('signals-list');
   if(!sigs.length){el.innerHTML='<div class="empty">Signals will appear at 9:30 AM after market opens.<br>Dashboard refreshes every 60 seconds.</div>';return;}
-  window._sigs=sigs; // store for index-based onclick — safe, no JSON in attributes
+  window._sigs=sigs;
   window._ats=ats;
+  optData=optData||{};
   el.innerHTML=sigs.map((s,i)=>{
     const cp=pm[s.stock]||s.entry_price||0;
     const at=ats.find(t=>t.stock===s.stock&&t.status==='open');
     const atIdx=at?ats.indexOf(at):-1;
     const isPrimary=i<2,total=s.score||0;
-    const rankCls=at?'rk-live':isPrimary?'rk-primary':'rk-backup';
-    const tagTxt=at?'LIVE':isPrimary?'PRIMARY':'BACKUP';
-    const tagCls=at?'st-live':isPrimary?'st-primary':'st-backup';
-    // Lot sizes per instrument
+    const result=s.signal_result||'PENDING';
+    const isHit=result==='TARGET_HIT';
+    const isSL=result==='SL_HIT';
+    const isDone=isHit||isSL;
+    const rankCls=isHit?'rk-primary':isSL?'rk-backup':at?'rk-live':isPrimary?'rk-primary':'rk-backup';
+    const tagTxt=isHit?'TARGET HIT':isSL?'SL HIT':at?'LIVE':isPrimary?'PRIMARY':'BACKUP';
+    const tagCls=isHit?'st-primary':isSL?'st-backup':at?'st-live':isPrimary?'st-primary':'st-backup';
+    // 1 LOT ONLY — all P&L based on exactly 1 lot
     const LOT_SZ={NIFTY50:75,BANKNIFTY:30,HDFCBANK:550,RELIANCE:250,ICICIBANK:700,SBIN:1500,TATAMOTORS:900,AXISBANK:625,INFY:300,TCS:150,KOTAKBANK:400,BAJFINANCE:125,MARUTI:50,TITAN:375,SUNPHARMA:700,WIPRO:1500,HCLTECH:350,TECHM:500,LT:150,BHARTIARTL:475,ITC:2400,HINDUNILVR:300};
-    const lotSz=LOT_SZ[s.stock]||100;
+    const lotSz=LOT_SZ[s.stock]||75;
     const slDist=s.entry_price>0&&s.sl_price>0?Math.abs(s.entry_price-s.sl_price):s.entry_price*0.005;
     const t1Dist=s.entry_price>0&&s.target1>0?Math.abs(s.target1-s.entry_price):slDist*1.5;
     const t2Dist=s.entry_price>0&&s.target2>0?Math.abs(s.target2-s.entry_price):slDist*2.5;
-    const riskPerLot=Math.round(slDist*lotSz);
-    const lots=riskPerLot>0?Math.max(1,Math.floor(15000/riskPerLot)):1;
-    const totalRisk=riskPerLot*lots;
-    const t1Profit=Math.round(t1Dist*lotSz*lots);
-    const t2Profit=Math.round(t2Dist*lotSz*lots);
-    // Strike: NIFTY nearest 50, BN nearest 100, stocks nearest 5
+    const slRisk1lot=Math.round(slDist*lotSz);
+    const t1Profit1lot=Math.round(t1Dist*lotSz);
+    const t2Profit1lot=Math.round(t2Dist*lotSz);
     const strikeStep=s.stock==='NIFTY50'?50:s.stock==='BANKNIFTY'?100:5;
     const strike=s.entry_price>0?Math.round(s.entry_price/strikeStep)*strikeStep:0;
     const optType=s.bias==='Bullish'||s.bias==='bullish'?'CE':'PE';
     const optBias=s.bias==='Bullish'||s.bias==='bullish'?'Bullish':'Bearish';
-    // Live price
     const livePrice=cp||s.entry_price||0;
-    const priceDiffToEntry=s.entry_price>0?Math.round(livePrice-s.entry_price):0;
-    const isGo=optBias==='Bullish'?livePrice>=s.entry_price:livePrice<=s.entry_price;
-    const goLabel=isGo?'GO ✓':'WAIT';
-    const goColor=isGo?'var(--green)':'var(--amber)';
-    const goDesc=isGo?'Price is at/past entry — can trade now':'Wait for 9:30 ORB, price not at entry yet';
-    const opts=`Buy ${strike} ${optType} (${optBias}) · ${lots} lot${lots>1?'s':''} (${lots*lotSz} units) · Risk: ₹${totalRisk.toLocaleString('en-IN')} · T1: +₹${t1Profit.toLocaleString('en-IN')}`;
-    const qty=Math.round(lots*lotSz);
+    const isGo=isDone?false:optBias==='Bullish'?livePrice>=s.entry_price:livePrice<=s.entry_price;
+    const goLabel=isDone?(isHit?'TARGET HIT ✅':'SL HIT ❌'):isGo?'GO ✓':'WAIT';
+    const goColor=isDone?(isHit?'var(--green)':'var(--red)'):isGo?'var(--green)':'var(--amber)';
+    const goDesc=isDone?(isHit?'Target hit — trade closed with profit':'SL hit — trade stopped out'):isGo?'Price is at/past entry — can trade now':'Waiting for entry level';
+    // Option premium from proxy
+    const od=optData[s.stock]||null;
+    const premiumLive=od&&od.premium?od.premium:null;
+    const premiumTarget=od&&od.t1Premium?od.t1Premium:null;
+    const premiumPct=od&&od.t1PctGain?od.t1PctGain:null;
+    const cost1lot=od&&od.cost1lot?od.cost1lot:null;
+    // Option premium line shown on card and in expanded
+    const optSummary=premiumLive
+      ?`Buy ${strike} ${optType} <strong style="color:${optType==='CE'?'var(--green)':'var(--red)'}">@ ₹${premiumLive}</strong>${premiumTarget?' → ₹'+premiumTarget+' (+'+premiumPct+'%)':''}`
+      :`Buy ${strike} ${optType}`;
     const ts=s.trend_score||0,vs=s.vol_score||0,ms=s.momo_score||0,rs=s.rs_score||0;
     const hasBreakdown=ts>0||vs>0||ms>0||rs>0;
     const verdict=total>=85?'Very high confidence. All signals aligned.':total>=75?'Good setup. Main signals agree.':total>=60?'Moderate — consider smaller size.':'Below threshold.';
-
+    // Live strip
     let liveStrip='';
-    if(at){
-      const ep=at.entry_price||s.entry_price;
-      const isBear=s.bias==='Bearish'||s.bias==='bearish';
-      const movePts=isBear?(ep-cp):(cp-ep);
-      const lot2=LOT_SZ[s.stock]||1;
-      const slDist2=Math.abs(ep-(s.sl_price||ep));
-      const lots2=slDist2>0?Math.max(1,Math.floor(15000/(slDist2*lot2))):1;
-      const pnlRs=Math.round(movePts*lot2*lots2);
-      const pnlP=ep>0?Math.round((movePts/ep)*10000)/100:0;
-      const sl=s.sl_price||ep*(isBear?1.02:0.98);
-      const distToSL=isBear?(cp-sl):(sl-cp);
-      const totalRange=Math.abs(ep-sl);
-      const slPct=totalRange>0?Math.min(100,Math.max(0,Math.round((1-distToSL/totalRange)*100))):50;
-      const slColor=slPct>=80?'var(--red)':slPct>=60?'var(--amber)':'var(--green)';
-      liveStrip=`<div class="sig-live-strip">
-        <div class="live-pnl" style="color:${gc(pnlRs)}">${pnlRs>=0?'+':''}₹${pnlRs.toLocaleString('en-IN')} (${pnlP>=0?'+':''}${pnlP}%)</div>
-        <div class="live-bar-wrap">
-          <div class="live-bar-lbl"><span>SL ${fmt(sl)}</span><span>${slPct}% to SL</span></div>
-          <div class="live-bar-track"><div class="live-bar-fill" style="width:${slPct}%;background:${slColor}"></div></div>
-        </div>
-      </div>`;
+    if(isDone){
+      const exitPrice=s.eod_price||0;
+      const isBear=s.bias==='Bearish';
+      const movePts=isBear?(s.entry_price-exitPrice):(exitPrice-s.entry_price);
+      const pnlRs=Math.round(movePts*lotSz);
+      const col=pnlRs>=0?'var(--green)':'var(--red)';
+      const bg=pnlRs>=0?'var(--green-bg)':'var(--red-bg)';
+      const bd=pnlRs>=0?'var(--green-bd)':'var(--red-bd)';
+      liveStrip=`<div style="padding:8px 14px;background:${bg};border-top:1px solid ${bd}"><div style="font-weight:700;font-size:13px;color:${col}">${isHit?'✅ TARGET HIT':'❌ SL HIT'} — ${pnlRs>=0?'+':''}₹${Math.abs(pnlRs).toLocaleString('en-IN')} (1 lot)</div><div style="font-size:11px;color:${col};margin-top:2px">Entry: ${fmt(s.entry_price)} → Exit: ${fmt(exitPrice||s.entry_price)}</div></div>`;
+    } else if(at||s.entry_triggered){
+      const ep=(at?at.entry_price:0)||s.entry_price;
+      const isBear2=s.bias==='Bearish';
+      const movePts2=isBear2?(ep-cp):(cp-ep);
+      const pnlRs2=Math.round(movePts2*lotSz);
+      const distToT1=isBear2?Math.round(s.target1?cp-s.target1:0):Math.round(s.target1?s.target1-cp:0);
+      liveStrip=`<div class="sig-live-strip"><div class="live-pnl" style="color:${gc(pnlRs2)}">🟡 ${pnlRs2>=0?'+':''}₹${Math.abs(pnlRs2).toLocaleString('en-IN')} now (1 lot)</div><div style="font-size:10px;color:var(--txt2);margin-top:3px">Entry: ${fmt(ep)} | Live: ${fmt(cp)} | ${Math.abs(distToT1)} pts to T1</div></div>`;
     }
-
-    // Use index references — no JSON embedded in HTML attributes
-    const actionBtn=at
-      ?`<button class="btn-exit" onclick="event.stopPropagation();exitTradeByIdx(${i},${atIdx})">I exited →</button>`
-      :`<button class="btn-enter" onclick="event.stopPropagation();openModalByIdx(${i})">I entered →</button>`;
+    const actionBtn=isDone
+      ?`<button class="btn-score" disabled style="opacity:0.5;cursor:default">Trade closed</button>`
+      :at
+        ?`<button class="btn-exit" onclick="event.stopPropagation();exitTradeByIdx(${i},${atIdx})">I exited →</button>`
+        :`<button class="btn-enter" onclick="event.stopPropagation();openModalByIdx(${i})">I entered →</button>`;
 
     return`<div class="sig-row" onclick="toggleExpand(${i})">
       <div class="sig-row-head">
         <div class="sig-rank ${rankCls}">${i+1}</div>
         <div class="sig-main">
-          <div class="sig-name-row"><div class="sig-name">${sn(s.stock)}</div><div class="sig-tag ${tagCls}">${tagTxt}</div><div class="sig-tag" style="background:${isGo?'var(--green-bg)':'var(--amber-bg)'};color:${goColor};border-color:${isGo?'var(--green-bd)':'var(--amber-bd)'}">${goLabel}</div></div>
-          <div class="sig-levels">SL <span class="sl">${fmt(s.sl_price)}</span> · T1 <span class="tg">${fmt(s.target1)}</span> · <span style="font-size:10px;font-weight:600;color:${optType==='CE'?'var(--green)':'var(--red)'}">${strike} ${optType}</span></div>
+          <div class="sig-name-row"><div class="sig-name">${sn(s.stock)}</div><div class="sig-tag ${tagCls}">${tagTxt}</div><div class="sig-tag" style="background:${goColor==='var(--green)'?'var(--green-bg)':goColor==='var(--red)'?'var(--red-bg)':'var(--amber-bg)'};color:${goColor}">${goLabel}</div></div>
+          <div class="sig-levels">SL <span class="sl">${fmt(s.sl_price)}</span> · T1 <span class="tg">${fmt(s.target1)}</span> · <span style="font-size:10px;font-weight:700;color:${optType==='CE'?'var(--green)':'var(--red)'}">${optSummary}</span></div>
         </div>
         <div class="sig-right">
           <div class="sig-entry">${livePrice>0?fmt(livePrice):fmt(s.entry_price)}</div>
@@ -796,6 +800,12 @@ function buildSignalList(sigs, pm, ats){
             <div class="exp-entry-val">${livePrice>0?fmt(livePrice):fmt(s.entry_price)}</div>
             <div class="exp-entry-hint" style="color:${goColor};font-weight:600">${goDesc}</div>
           </div>
+          <div class="exp-opts" style="margin-bottom:8px">
+            <div class="exp-opts-lbl">Option to buy</div>
+            <div class="exp-opts-val" style="font-size:13px;font-weight:700">${premiumLive?`Buy ${strike} ${optType} @ ₹${premiumLive} per unit`:`Buy ${strike} ${optType} (premium loading…)`}</div>
+            ${premiumTarget?`<div style="margin-top:4px;font-size:11px">Target premium: ₹${premiumTarget} (+${premiumPct}%) · T1 P&L (1 lot): +₹${od.t1PnlRs?od.t1PnlRs.toLocaleString('en-IN'):'—'}</div>`:''}
+            ${cost1lot?`<div style="margin-top:3px;font-size:11px;color:var(--txt3)">1 lot cost = ₹${premiumLive} × ${lotSz} units = ₹${cost1lot.toLocaleString('en-IN')}</div>`:''}
+          </div>
           <div class="exp-levels">
             <div class="exp-level"><div class="exp-lev-lbl">Entry</div><div class="exp-lev-val">${fmt(s.entry_price)}</div></div>
             <div class="exp-level"><div class="exp-lev-lbl">Stop loss</div><div class="exp-lev-val c-sl">${fmt(s.sl_price)}</div></div>
@@ -803,27 +813,22 @@ function buildSignalList(sigs, pm, ats){
           </div>
           <div class="exp-levels" style="margin-top:4px">
             <div class="exp-level"><div class="exp-lev-lbl">Target 1</div><div class="exp-lev-val c-t1">${fmt(s.target1)}</div></div>
-            <div class="exp-level"><div class="exp-lev-lbl">T1 profit</div><div class="exp-lev-val c-t1">+₹${t1Profit.toLocaleString('en-IN')}</div></div>
+            <div class="exp-level"><div class="exp-lev-lbl">T1 profit</div><div class="exp-lev-val c-t1">+₹${t1Profit1lot.toLocaleString('en-IN')}</div></div>
             <div class="exp-level"><div class="exp-lev-lbl">Target 2</div><div class="exp-lev-val c-t2">${fmt(s.target2)}</div></div>
           </div>
-          <div class="exp-opts"><div class="exp-opts-lbl">Options — ≤ ₹15K risk</div><div class="exp-opts-val">${opts}</div></div>
           <div class="exp-levels" style="margin-top:4px;background:var(--green-bg);border-radius:8px;padding:8px">
-            <div class="exp-level"><div class="exp-lev-lbl">Lots</div><div class="exp-lev-val" style="color:var(--green)">${lots} × ${lotSz} = ${qty} units</div></div>
-            <div class="exp-level"><div class="exp-lev-lbl">Max risk</div><div class="exp-lev-val" style="color:var(--red)">₹${totalRisk.toLocaleString('en-IN')}</div></div>
-            <div class="exp-level"><div class="exp-lev-lbl">T2 profit</div><div class="exp-lev-val c-t2">+₹${t2Profit.toLocaleString('en-IN')}</div></div>
+            <div class="exp-level"><div class="exp-lev-lbl">1 lot</div><div class="exp-lev-val" style="color:var(--green)">${lotSz} units</div></div>
+            <div class="exp-level"><div class="exp-lev-lbl">SL risk</div><div class="exp-lev-val" style="color:var(--red)">-₹${slRisk1lot.toLocaleString('en-IN')}</div></div>
+            <div class="exp-level"><div class="exp-lev-lbl">T2 profit</div><div class="exp-lev-val c-t2">+₹${t2Profit1lot.toLocaleString('en-IN')}</div></div>
           </div>
-          <div class="exp-why"><div class="exp-why-lbl">Why this trade</div><div class="exp-why-val">Score ${total}/100. ${optBias} bias — buy ${strike} ${optType}. SL is ${Math.round(slDist)} pts away (ATR-based). Day move: ${s.day_change_pct>=0?'+':''}${(s.day_change_pct||0).toFixed(2)}%.</div></div>
+          <div class="exp-why"><div class="exp-why-lbl">Why this trade</div><div class="exp-why-val">Score ${total}/100. ${optBias} — SL is ${Math.round(slDist)} pts away. T1: ${fmt(s.target1)} (+₹${t1Profit1lot.toLocaleString('en-IN')}) · T2: ${fmt(s.target2)} (+₹${t2Profit1lot.toLocaleString('en-IN')}).</div></div>
           <div class="exp-score-toggle" onclick="event.stopPropagation();document.getElementById('sp-${i}').classList.toggle('open')">▸ View score breakdown</div>
           <div class="exp-score-panel" id="sp-${i}">
-            ${hasBreakdown?`
-            <div class="score-row"><div class="score-lbl">Trend alignment</div><div class="score-track"><div class="score-fill" style="width:${ts/25*100}%;background:${ts>=18?'var(--green)':ts>=12?'var(--amber)':'var(--red)'}"></div></div><div class="score-val" style="color:${ts>=18?'var(--green)':ts>=12?'var(--amber)':'var(--red)'}">${ts}</div></div>
-            <div class="score-row"><div class="score-lbl">Volume strength</div><div class="score-track"><div class="score-fill" style="width:${vs/20*100}%;background:${vs>=14?'var(--green)':vs>=9?'var(--amber)':'var(--red)'}"></div></div><div class="score-val" style="color:${vs>=14?'var(--green)':vs>=9?'var(--amber)':'var(--red)'}">${vs}</div></div>
-            <div class="score-row"><div class="score-lbl">Relative strength</div><div class="score-track"><div class="score-fill" style="width:${rs/25*100}%;background:${rs>=18?'var(--green)':rs>=12?'var(--amber)':'var(--red)'}"></div></div><div class="score-val" style="color:${rs>=18?'var(--green)':rs>=12?'var(--amber)':'var(--red)'}">${rs}</div></div>
-            `:`<div style="font-size:11px;color:var(--txt3);padding:4px 0">Score: ${total}/100 — indicator agreement based</div>`}
+            ${hasBreakdown?`<div class="score-row"><div class="score-lbl">Trend</div><div class="score-track"><div class="score-fill" style="width:${ts/25*100}%;background:var(--green)"></div></div><div class="score-val">${ts}</div></div><div class="score-row"><div class="score-lbl">Volume</div><div class="score-track"><div class="score-fill" style="width:${vs/20*100}%;background:var(--green)"></div></div><div class="score-val">${vs}</div></div>`:`<div style="font-size:11px;color:var(--txt3);padding:4px 0">Score ${total}/100 — indicator agreement</div>`}
             <div class="score-verdict">${verdict}</div>
           </div>
           <div class="exp-actions">${actionBtn}<button class="btn-score" onclick="event.stopPropagation()">Score ↑</button></div>
-          <div class="exp-qty">${lots} lot${lots>1?'s':''} · ${qty} units · ₹${totalRisk.toLocaleString('en-IN')} max risk</div>
+          <div class="exp-qty">1 lot = ${lotSz} units · SL risk: ₹${slRisk1lot.toLocaleString('en-IN')} · T1: +₹${t1Profit1lot.toLocaleString('en-IN')}</div>
         </div>
       </div>
     </div>`;
